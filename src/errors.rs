@@ -9,14 +9,16 @@ pub enum StoreError {
     LoadError,
     #[error("Failed to create project")]
     FailedToCreate,
+
+    #[error("Address not valid")]
+    InvalidAddress,
 }
 
 impl ErrorExtensions for StoreError {
     fn extend(&self) -> Error {
         Error::new(format!("{}", self)).extend_with(|_err, e| match self {
             StoreError::ConnectionPoolError => e.set("code", 500),
-            StoreError::LoadError => {},
-            StoreError::FailedToCreate => {}
+            _ => {}
         })
     }
 }

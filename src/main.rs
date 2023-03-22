@@ -7,13 +7,13 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-use database::{create_connection_pool, ConnectionPool};
-use graphql::{MutationRoot, MySchema, QueryRoot};
-use services::project::ProjectService;
+use database::create_connection_pool;
+use resolvers::{MutationRoot, MySchema, QueryRoot};
+use services::{project::ProjectService, wallet::WalletService};
 
 mod database;
 mod errors;
-mod graphql;
+mod resolvers;
 pub mod schema;
 mod services;
 
@@ -21,14 +21,15 @@ mod services;
 async fn main() {
     // database setup
     let database_connection = create_connection_pool();
-    let connection_pool = ConnectionPool::new(database_connection.clone());
 
     // services setup
-    let project_service = ProjectService::new(connection_pool);
+    let project_service = ProjectService::new(database_connection.clone());
+    let wallet_service = WalletService::new(database_connection.clone());
 
     // schema setup
     let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(project_service)
+        .data(wallet_service)
         .finish();
 
     // axum setup

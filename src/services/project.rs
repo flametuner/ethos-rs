@@ -1,9 +1,9 @@
 use async_graphql::SimpleObject;
 use diesel::{prelude::*, r2d2::ConnectionManager};
-use r2d2::PooledConnection;
+use r2d2::Pool;
 
 use crate::{database::ConnectionPool, errors::StoreError, schema::projects};
-use diesel::{Insertable, PgConnection, Queryable};
+use diesel::{Insertable, Queryable};
 use uuid::Uuid;
 
 #[derive(Queryable, SimpleObject)]
@@ -30,8 +30,10 @@ pub struct ProjectService {
 }
 
 impl ProjectService {
-    pub fn new(pool: ConnectionPool) -> Self {
-        ProjectService { pool }
+    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+        ProjectService {
+            pool: ConnectionPool::new(pool),
+        }
     }
 
     pub fn create_project(
@@ -45,22 +47,17 @@ impl ProjectService {
             url: None,
             cors: vec![],
         };
-        let mut conn = self.get_conn()?;
+        let mut conn = self.pool.get()?;
         diesel::insert_into(projects::table)
             .values(&insert)
-            .get_results::<Project>(&mut conn)
-            .map(|mut p| p.pop().unwrap())
+            .get_result::<Project>(&mut conn)
             .map_err(|_e| StoreError::FailedToCreate)
-    }
-
-    fn get_conn(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
-        self.pool.get()
     }
 
     pub fn get_projects(&self) -> Result<Vec<Project>, StoreError> {
         use crate::schema::projects::dsl::*;
 
-        let mut conn = self.get_conn()?;
+        let mut conn = self.pool.get()?;
         projects
             .limit(10)
             .load::<Project>(&mut *conn)
