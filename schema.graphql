@@ -1,0 +1,506 @@
+
+scalar Date
+
+directive @isAuthenticated on FIELD_DEFINITION
+directive @hasRole(roles: [String!]!) on FIELD_DEFINITION
+
+interface EventHistory {
+  id: ID!
+  createdAt: Date!
+}
+
+enum Blockchain {
+  ETHEREUM
+  POLYGON
+}
+
+enum Sort {
+  ASC
+  DESC
+}
+
+enum DisplayType {
+  NUMBER
+  BOOST_PERCENTAGE
+  BOOST_NUMBER
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TicketPurpose {
+  ASSIGN
+  ASSIGNED
+  REDEEM
+}
+
+enum TicketState {
+  """
+  Ticket is not yet claimed
+  """
+  REQUEST
+
+  """
+  Ticket request waiting for random number
+  """
+  RANDOM_NUMBER
+
+  """
+  Ticket after received random number
+  """
+  UNPACK
+
+  """
+  Ticket is claimed
+  """
+  MINTED
+}
+
+input PageInput {
+  skip: Int!
+  limit: Int!
+}
+
+input NFTFilterInput {
+  wallet: ID
+  minted: Boolean
+  # subcollection: ID
+  tier: ID
+  benefits: [ID]
+}
+
+input NFTSortInput {
+  id: Sort
+}
+
+input RedeemBenefitInput {
+  nftId: ID!
+  benefitId: ID!
+  sig: Signature!
+}
+
+input OnTransferInput {
+  nftId: ID
+  address: String!
+}
+
+input Signature {
+  r: String!
+  s: String!
+  v: Int!
+}
+
+input LoginDiscordInput {
+  discordToken: String!
+  signature: Signature!
+}
+
+input CreateProjectInput {
+  name: String!
+  description: String
+  url: String
+}
+
+input UpdateAdminsProject {
+  connect: [ID!]!
+  disconnect: [ID!]!
+}
+
+input UpdateProjectInput {
+  projectId: ID!
+  name: String
+  description: String
+  url: String
+}
+
+input NFTOrderBy {
+  nftId: Sort
+  minted: Sort
+}
+
+input FilterNFTsInput {
+  nftId: Int
+  take: Int
+  cursor: ID
+  collectionId: ID
+  tier: Int
+  minted: Boolean
+  orderBy: NFTOrderBy
+}
+
+input FilterNFTInput {
+  id: ID
+  nftId: Int
+  collectionId: ID!
+}
+
+input FilterNftsWalletInput {
+  nftId: Int
+  take: Int
+  cursor: ID
+}
+
+input UpdateProfileInput {
+  name: String
+  email: String
+}
+
+input AssignTicketInput {
+  ticketId: ID!
+  name: String!
+  email: String!
+}
+
+type Project {
+  id: ID
+  """
+  name of project, example: Taipe
+  """
+  name: String!
+  description: String
+  url: String
+  """
+  list of project`s collections
+  """
+  collections: [Collection!]!
+}
+
+type Collection {
+  id: ID!
+  name: String!
+  description: String!
+  image: String
+  externalLink: String
+  sellerFeeBasisPoints: Int
+  chainInstances: [NetworkContract!]!
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type Network {
+  id: ID!
+  chainId: Int!
+}
+
+type NetworkContract {
+  id: ID
+
+  """
+  populated from blockchain service
+  """
+  contractId: String
+  feeRecipient: String
+
+  address: String!
+  network: Network!
+  collection: Collection
+
+  nfts: [NFT!]!
+}
+
+type NFT {
+  """
+  same as token id on smart contract
+  """
+  id: ID!
+  nftId: Int!
+  name: String!
+  description: String
+  image: String!
+  mintedAt: Date
+  minted: Boolean!
+  externalUrl: String
+  animationUrl: String
+  collection: Collection!
+  owner: Wallet
+  networkContract: NetworkContract!
+  history: [EventHistory!]!
+  benefits: [NFTBenefit!]!
+  attributes: [NftAttribute!]!
+}
+
+type NftAttribute {
+  id: ID!
+  traitType: String
+  value: String
+  maxValue: Float
+  displayType: DisplayType
+}
+
+type NFTBenefit {
+  id: ID!
+  benefit: Benefit!
+  cupomCode: String @isAuthenticated
+  available: Boolean!
+  expiresAt: Date
+}
+
+type Benefit {
+  id: ID!
+  name: String!
+  description: String!
+  image: String!
+  createdAt: Date
+  updatedAt: Date
+  expiresAt: Date
+}
+
+type User {
+  id: ID!
+  """
+  The user's email address
+  """
+  email: String
+  role: Role
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type Profile {
+  id: ID!
+  """
+  The profile's discordId
+  """
+  discordID: String
+  """
+  The profile's discordName
+  """
+  discordName: String
+  """
+  The profile's name or nickname
+  """
+  name: String
+
+  """
+  The profile's email address
+  """
+  email: String
+
+  """
+  The profile's phone number
+  """
+  phone: String
+
+  """
+  The profile's birthdate
+  """
+  birthdate: String
+
+  """
+  The profile's profile img link
+  """
+  profileImg: String
+
+  wallet: Wallet!
+}
+
+type Wallet {
+  id: ID!
+  address: String!
+  nonce: String!
+
+  """
+  The user profile information
+  """
+  profile: Profile @isAuthenticated
+
+  """
+  current owned NFTs of the experience
+  """
+  nftList(input: FilterNftsWalletInput): PaginatedNFTs! @isAuthenticated
+
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type Ticket {
+  id: ID!
+  code: String!
+  email: String!
+  name: String!
+  purpose: TicketPurpose!
+  tier: Int!
+  state: TicketState!
+  randomRequest: RandomRequest
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type RandomRequest {
+  id: ID!
+  requestId: String!
+  fulfilled: Boolean!
+  fulfilledAt: Date
+  wallet: Wallet!
+  nft: NFT
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type Transfer implements EventHistory {
+  id: ID!
+  from: Wallet!
+  to: Wallet!
+  createdAt: Date!
+}
+
+type PaginatedNFTs {
+  totalCount: Int!
+  edges: [NFT!]!
+  nextCursor: ID
+}
+
+type LoginResponse {
+  token: String!
+  wallet: Wallet!
+}
+
+type AssignTicketError {
+  ticketId: String!
+  message: String!
+}
+
+"""
+If error is null, the mutation was successful outherwise it will return the errors
+"""
+type AssignTicketResponse {
+  """
+  List of tickets that were successfully assigned
+  """
+  tickets: [Ticket!]!
+  """
+  List of errors that occurred during the assignment
+  """
+  errors: [AssignTicketError!]!
+}
+
+type TicketsResponse {
+  tickets: [Ticket!]!
+  expired: Boolean!
+}
+
+type RedeemTicketResponse {
+  randomRequest: RandomRequest!
+  estimatedTime: Int!
+}
+
+# send experience secret id through header
+type Query {
+  """
+  returns list of current collection nft
+  """
+  nfts(input: FilterNFTsInput!): PaginatedNFTs!
+
+  """
+  returns list of benefits collection nft
+  """
+  benefits(page: Int, limit: Int): [Benefit!]!
+
+  """
+  returns nft details by id
+  """
+  nft(input: FilterNFTInput!): NFT!
+
+  """
+  returns the current experience collection
+  """
+  collection(id: ID!): Collection!
+
+  """
+  returns the current project collections
+  """
+  collections: [Collection!]!
+
+  """
+  returns the current user`s projects list where user project role is admin
+  """
+  projects: [Project!]!
+
+  """
+  returns the current user`s profile
+  """
+  profile: Profile!
+
+  """
+  returns array of tickets
+  """
+  tickets(token: String!): TicketsResponse! @isAuthenticated
+
+  emailHasTicket(email: String!): Boolean!
+}
+
+type Mutation {
+  """
+  mutation for redeemTicket and generate random request id for nft tier 2
+  """
+  redeemTicket(token: String!): RedeemTicketResponse! @isAuthenticated
+
+  """
+  mutation for assign ticket to user
+  """
+  assignTicket(
+    token: String!
+    ticketsToAssign: [AssignTicketInput!]!
+  ): AssignTicketResponse! @isAuthenticated
+
+  """
+  Using requestId unpack the nft and send to user wallet
+  """
+  unpack(requestId: String!, tier: Int!): NFT! @isAuthenticated
+
+  redeemBenefit(input: RedeemBenefitInput!): NFTBenefit
+
+  # mint check if its needed
+  # mintNft(input: MintNFTInput): NFT!
+
+  """
+  register a wallet address and generate a new nonce
+  """
+  wallet(address: String!): Wallet!
+
+  """
+  validate signedMessage, nonce, address and generate a new JWT token
+  """
+  login(address: String!, signature: Signature!): LoginResponse!
+
+  # login via discord
+  loginViaDiscord(input: LoginDiscordInput!): Wallet!
+
+  createProject(input: CreateProjectInput!): Project!
+
+  updateProject(input: UpdateProjectInput!): Project!
+
+  """
+  update profile
+  """
+  updateProfile(input: UpdateProfileInput!): Profile! @isAuthenticated
+
+  resendTicketEmail(email: String!): Boolean!
+
+  """
+  Create tickets for a specific email.
+  Work only in development environment
+  """
+  createTickets(
+    email: String!
+    quantity: Int!
+    tier: Int
+    name: String
+  ): [Ticket!]!
+
+  sendTemplateEmailToTickets(
+    events: [String!]!
+    templateId: String!
+  ): [Ticket!]!
+}
+
+type Subscription {
+  """
+  returns the nft when backend detects a transfer to a wallet
+  """
+  onTransfer(input: OnTransferInput): NFT!
+
+  onRequestFulfilled(requestId: String!): RandomRequest!
+}
