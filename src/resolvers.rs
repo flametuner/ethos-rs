@@ -5,8 +5,9 @@ use std::str::FromStr;
 use crate::{
     errors::StoreError,
     services::{
+        auth::{AuthService, LoginResponse},
         project::{Project, ProjectService},
-        wallet::{SignatureInput, Wallet, WalletService},
+        wallet::{Wallet, WalletService},
     },
 };
 
@@ -55,9 +56,9 @@ impl MutationRoot {
         ctx: &Context<'ctx>,
         address: String,
         signature: String,
-    ) -> Result<Wallet, StoreError> {
+    ) -> Result<LoginResponse, StoreError> {
         let address = Address::from_str(&address)?;
-        let service = ctx.data::<WalletService>().unwrap();
+        let service = ctx.data::<AuthService>().unwrap();
         service.login(address, signature).await
     }
 }

@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use async_graphql::*;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -9,10 +9,11 @@ use axum::{
 };
 use database::create_connection_pool;
 use resolvers::{MutationRoot, MySchema, QueryRoot};
-use services::{project::ProjectService, wallet::WalletService};
+use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 
 mod database;
 mod errors;
+mod jwt;
 mod resolvers;
 pub mod schema;
 mod services;
@@ -24,12 +25,14 @@ async fn main() {
 
     // services setup
     let project_service = ProjectService::new(database_connection.clone());
-    let wallet_service = WalletService::new(database_connection.clone());
+    let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
+    let auth_service = AuthService::new(wallet_service.clone());
 
     // schema setup
     let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(project_service)
         .data(wallet_service)
+        .data(auth_service)
         .finish();
 
     // axum setup
