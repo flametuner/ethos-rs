@@ -1,6 +1,7 @@
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use ethers::types::Address;
+use ethers::utils::to_checksum;
 
 use diesel::{r2d2::ConnectionManager, Insertable, PgConnection, Queryable, RunQueryDsl};
 use ethers::types::Signature;
@@ -38,7 +39,7 @@ impl WalletService {
         }
     }
 
-    pub fn get_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
+    pub fn get_wallet(&self, addr: &Address) -> Result<Wallet, StoreError> {
         use crate::schema::wallets::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -55,7 +56,7 @@ impl WalletService {
     pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
         use crate::schema::wallets::dsl::*;
 
-        if let Ok(wallet) = self.get_wallet(addr) {
+        if let Ok(wallet) = self.get_wallet(&addr) {
             return Ok(wallet);
         }
 
@@ -90,7 +91,7 @@ impl WalletService {
         let signature = Signature::from_str(&signature)?;
         // retrive the nonce from the dattabase
 
-        let wallet = self.get_wallet(addr)?;
+        let wallet = self.get_wallet(&addr)?;
         let nonce = wallet.nonce.to_string();
 
         let message = create_message(&addr, &nonce);
@@ -110,13 +111,14 @@ fn create_message(address: &Address, nonce: &str) -> String {
             This request will not trigger a blockchain transaction or cost any gas fees.\n\
             Your authentication status will reset after 24 hours.\n\n\
             Wallet address:\n\
-            {:?}\n\n\
+            {}\n\n\
             Nonce:\n\
             {}",
-        address, nonce
+        to_full_addr(address),
+        nonce
     )
 }
 
 fn to_full_addr(addr: &Address) -> String {
-    format!("{:?}", addr).to_lowercase()
+    to_checksum(addr, None)
 }

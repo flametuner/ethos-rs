@@ -22,26 +22,40 @@ mod services;
 
 #[tokio::main]
 async fn main() {
+    println!("Starting Graphql WebApp...");
+    use std::time::Instant;
+    let now = Instant::now();
+    // load environment variables
     dotenv().ok();
     // database setup
+    let database_time = Instant::now();
+    println!("Connecting to database...");
     let database_connection = create_connection_pool();
 
+    println!(
+        "Connected to database! ({}ms)",
+        database_time.elapsed().as_millis()
+    );
     // services setup
+    println!("Setting up services...");
     let project_service = ProjectService::new(database_connection.clone());
     let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
     let auth_service = AuthService::new(wallet_service.clone());
 
     // schema setup
+    println!("Setting up schema...");
     let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(project_service)
         .data(wallet_service)
         .data(auth_service)
         .finish();
 
+    // cors setup
     // let allowed_origins = [
     //     "http://localhost:3001".parse().unwrap(),
     //     "http://localhost:3000".parse().unwrap(),
     // ];
+    println!("Setting up cors...");
     let cors = CorsLayer::permissive().expose_headers(Any);
     // axum setup
     let app = Router::new()
@@ -50,7 +64,8 @@ async fn main() {
         .layer(Extension(schema))
         .layer(cors);
 
-    // lift off
+    // liftoff
+    println!("Liftoff in {}ms", now.elapsed().as_millis());
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
