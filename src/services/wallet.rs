@@ -43,13 +43,13 @@ impl WalletService {
         let mut conn = self.pool.get()?;
 
         let mut wallet = wallets
-            .filter(address.eq(addr.to_string()))
+            .filter(address.eq(to_full_addr(&addr)))
             .limit(1)
             .load::<Wallet>(&mut *conn)?;
         if let Some(wallet) = wallet.pop() {
             Ok(wallet)
         } else {
-            Err(StoreError::WalletNotFound(addr.to_string()))
+            Err(StoreError::WalletNotFound(to_full_addr(&addr)))
         }
     }
     pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
@@ -61,7 +61,7 @@ impl WalletService {
 
         let mut conn = self.pool.get()?;
         let new_wallet = NewWallet {
-            address: addr.to_string(),
+            address: to_full_addr(&addr),
             nonce: Uuid::new_v4(),
         };
         Ok(diesel::insert_into(wallets)
@@ -76,7 +76,7 @@ impl WalletService {
 
         let new_nonce = Uuid::new_v4();
         Ok(diesel::update(wallets)
-            .filter(address.eq(addr.to_string()))
+            .filter(address.eq(to_full_addr(&addr)))
             .set(nonce.eq(new_nonce))
             .get_result::<Wallet>(&mut conn)?)
     }
@@ -89,27 +89,34 @@ impl WalletService {
         // verify signature
         let signature = Signature::from_str(&signature)?;
         // retrive the nonce from the dattabase
+
         let wallet = self.get_wallet(addr)?;
         let nonce = wallet.nonce.to_string();
 
+        let message = create_message(&addr, &nonce);
+        println!("{}", message);
         // check if the nonce of the signature is the same of the database
-        signature.verify(create_message(&addr.to_string(), &nonce), addr)?;
+        signature.verify(message, addr)?;
         // update the nonce
         // return wallet
         Ok(self.update_nonce(addr)?)
     }
 }
 
-fn create_message(address: &str, nonce: &str) -> String {
+fn create_message(address: &Address, nonce: &str) -> String {
     format!(
         "Welcome\n\n\
             Click to sign in and accept the Terms of Service\n\
             This request will not trigger a blockchain transaction or cost any gas fees.\n\
             Your authentication status will reset after 24 hours.\n\n\
             Wallet address:\n\
-            {}\n\n\
+            {:?}\n\n\
             Nonce:\n\
             {}",
         address, nonce
     )
+}
+
+fn to_full_addr(addr: &Address) -> String {
+    format!("{:?}", addr).to_lowercase()
 }

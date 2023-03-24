@@ -1,13 +1,15 @@
 use std::{net::SocketAddr, sync::Arc};
+use tower_http::cors::{Any, CorsLayer};
 
 use async_graphql::*;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
     response::{self, IntoResponse},
-    routing::get,
+    routing::{get, post},
     Extension, Router,
 };
 use database::create_connection_pool;
+use dotenvy::dotenv;
 use resolvers::{MutationRoot, MySchema, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 
@@ -20,6 +22,7 @@ mod services;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     // database setup
     let database_connection = create_connection_pool();
 
@@ -35,10 +38,17 @@ async fn main() {
         .data(auth_service)
         .finish();
 
+    // let allowed_origins = [
+    //     "http://localhost:3001".parse().unwrap(),
+    //     "http://localhost:3000".parse().unwrap(),
+    // ];
+    let cors = CorsLayer::permissive().expose_headers(Any);
     // axum setup
     let app = Router::new()
-        .route("/", get(graphiql).post(graphql_handler))
-        .layer(Extension(schema));
+        .route("/", get(graphiql))
+        .route("/graphql", post(graphql_handler))
+        .layer(Extension(schema))
+        .layer(cors);
 
     // lift off
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -53,5 +63,5 @@ async fn graphql_handler(schema: Extension<MySchema>, req: GraphQLRequest) -> Gr
 }
 
 async fn graphiql() -> impl IntoResponse {
-    response::Html(http::GraphiQLSource::build().endpoint("/").finish())
+    response::Html(http::GraphiQLSource::build().endpoint("/graphql").finish())
 }

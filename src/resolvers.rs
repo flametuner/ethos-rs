@@ -1,6 +1,6 @@
 use async_graphql::{Context, EmptySubscription, Object, Schema};
 use ethers::types::Address;
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 use crate::{
     errors::StoreError,
@@ -47,7 +47,7 @@ impl MutationRoot {
         address: String,
     ) -> Result<Wallet, StoreError> {
         let address = Address::from_str(&address)?;
-        let service = ctx.data::<WalletService>().unwrap();
+        let service = ctx.data::<Arc<WalletService>>().unwrap();
         service.upsert_wallet(address)
     }
 
