@@ -48,19 +48,15 @@ impl ProjectService {
             cors: vec![],
         };
         let mut conn = self.pool.get()?;
-        diesel::insert_into(projects::table)
+        Ok(diesel::insert_into(projects::table)
             .values(&insert)
-            .get_result::<Project>(&mut conn)
-            .map_err(|_e| StoreError::FailedToCreate)
+            .get_result::<Project>(&mut conn)?)
     }
 
     pub fn get_projects(&self) -> Result<Vec<Project>, StoreError> {
         use crate::schema::projects::dsl::*;
 
         let mut conn = self.pool.get()?;
-        projects
-            .limit(10)
-            .load::<Project>(&mut *conn)
-            .map_err(|_| StoreError::LoadError)
+        Ok(projects.limit(10).load::<Project>(&mut *conn)?)
     }
 }

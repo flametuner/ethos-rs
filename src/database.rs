@@ -24,6 +24,6 @@ impl ConnectionPool {
     }
 
     pub fn get(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
-        self.pool.get().map_err(|_| StoreError::ConnectionPoolError)
+        Ok(self.pool.get()?)
     }
 }

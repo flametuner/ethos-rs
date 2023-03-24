@@ -1,12 +1,12 @@
 use async_graphql::{Context, EmptySubscription, Object, Schema};
-use ethabi::Address;
+use ethers::types::Address;
 use std::str::FromStr;
 
 use crate::{
     errors::StoreError,
     services::{
         project::{Project, ProjectService},
-        wallet::{Wallet, WalletService},
+        wallet::{SignatureInput, Wallet, WalletService},
     },
 };
 
@@ -45,8 +45,19 @@ impl MutationRoot {
         ctx: &Context<'ctx>,
         address: String,
     ) -> Result<Wallet, StoreError> {
-        let address = Address::from_str(&address).map_err(|_e| StoreError::InvalidAddress)?;
+        let address = Address::from_str(&address)?;
         let service = ctx.data::<WalletService>().unwrap();
         service.upsert_wallet(address)
+    }
+
+    async fn login<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        address: String,
+        signature: String,
+    ) -> Result<Wallet, StoreError> {
+        let address = Address::from_str(&address)?;
+        let service = ctx.data::<WalletService>().unwrap();
+        service.login(address, signature).await
     }
 }
