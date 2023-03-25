@@ -1,6 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    profiles (id) {
+        id -> Uuid,
+        wallet_id -> Uuid,
+        name -> Varchar,
+        email -> Varchar,
+    }
+}
+
+diesel::table! {
     projects (id) {
         id -> Uuid,
         name -> Varchar,
@@ -22,7 +31,10 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(profiles -> wallets (wallet_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
+    profiles,
     projects,
     wallets,
 );
