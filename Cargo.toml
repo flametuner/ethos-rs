@@ -1,5 +1,5 @@
 [package]
-name = "axum-graphql"
+name = "ethos-rs"
 version = "0.1.0"
 edition = "2021"
 
