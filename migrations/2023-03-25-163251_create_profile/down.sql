@@ -1,3 +1,5 @@
 -- This file should undo anything in `up.sql`
-DROP TABLE profiles;
 
+ALTER TABLE wallets DROP COLUMN profile_id;
+
+DROP TABLE profiles;

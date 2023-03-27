@@ -4,6 +4,8 @@ use tower_http::cors::{Any, CorsLayer};
 use async_graphql::*;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
+    extract::State,
+    http::HeaderMap,
     response::{self, IntoResponse},
     routing::{get, post},
     Extension, Router,
@@ -13,8 +15,11 @@ use dotenvy::dotenv;
 use resolvers::{MutationRoot, MySchema, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 
+use crate::services::profile::ProfileService;
+
 mod database;
 mod errors;
+mod guards;
 mod jwt;
 mod resolvers;
 pub mod schema;
@@ -40,14 +45,16 @@ async fn main() {
     println!("Setting up services...");
     let project_service = ProjectService::new(database_connection.clone());
     let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
-    let auth_service = AuthService::new(wallet_service.clone());
+    let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
+    let profile_service = ProfileService::new(database_connection.clone());
 
     // schema setup
     println!("Setting up schema...");
     let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(project_service)
         .data(wallet_service)
-        .data(auth_service)
+        .data(auth_service.clone())
+        .data(profile_service)
         .finish();
 
     // cors setup
@@ -62,7 +69,8 @@ async fn main() {
         .route("/", get(graphiql))
         .route("/graphql", post(graphql_handler))
         .layer(Extension(schema))
-        .layer(cors);
+        .layer(cors)
+        .with_state(auth_service);
 
     // liftoff
     println!("Liftoff in {}ms", now.elapsed().as_millis());
@@ -73,8 +81,27 @@ async fn main() {
         .unwrap();
 }
 
-async fn graphql_handler(schema: Extension<MySchema>, req: GraphQLRequest) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
+fn get_token_from_headers(headers: &HeaderMap) -> Option<String> {
+    headers.get("Authorization").and_then(|value| {
+        value
+            .to_str()
+            .ok()
+            .map(|s| s.to_string().replace("Bearer ", ""))
+    })
+}
+async fn graphql_handler(
+    schema: Extension<MySchema>,
+    State(auth): State<Arc<AuthService>>,
+    headers: HeaderMap,
+    req: GraphQLRequest,
+) -> GraphQLResponse {
+    let mut req = req.into_inner();
+    if let Some(token) = get_token_from_headers(&headers) {
+        if let Ok(wallet) = auth.validate(token.as_str()).await {
+            req = req.data(wallet);
+        }
+    }
+    schema.execute(req).await.into()
 }
 
 async fn graphiql() -> impl IntoResponse {

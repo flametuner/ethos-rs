@@ -19,6 +19,13 @@ pub struct Wallet {
     nonce: Uuid,
     created_at: chrono::NaiveDateTime,
     updated_at: chrono::NaiveDateTime,
+    profile_id: Uuid,
+}
+
+impl Wallet {
+    pub fn get_profile_id(&self) -> Uuid {
+        self.profile_id
+    }
 }
 
 #[derive(Insertable)]

@@ -1,3 +1,4 @@
+use crate::guards::is_authenticated::IsAuthenticated;
 use async_graphql::{Context, EmptySubscription, Object, Schema};
 use ethers::types::Address;
 use std::{str::FromStr, sync::Arc};
@@ -6,6 +7,7 @@ use crate::{
     errors::StoreError,
     services::{
         auth::{AuthService, LoginResponse},
+        profile::{Profile, ProfileService},
         project::{Project, ProjectService},
         wallet::{Wallet, WalletService},
     },
@@ -19,6 +21,13 @@ pub struct QueryRoot;
 impl QueryRoot {
     async fn health(&self) -> String {
         "ok".to_string()
+    }
+
+    #[graphql(guard = "IsAuthenticated")]
+    async fn profile<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Profile, StoreError> {
+        let wallet = ctx.data_unchecked::<Wallet>();
+        let service = ctx.data::<ProfileService>().unwrap();
+        service.get_profile(wallet.get_profile_id())
     }
 
     async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, StoreError> {
@@ -58,7 +67,7 @@ impl MutationRoot {
         signature: String,
     ) -> Result<LoginResponse, StoreError> {
         let address = Address::from_str(&address)?;
-        let service = ctx.data::<AuthService>().unwrap();
+        let service = ctx.data::<Arc<AuthService>>().unwrap();
         service.login(address, signature).await
     }
 }

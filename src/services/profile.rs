@@ -1,6 +1,9 @@
-use crate::{database::ConnectionPool, schema::profiles};
+use crate::database::ConnectionPool;
 use async_graphql::SimpleObject;
-use diesel::Queryable;
+use diesel::prelude::*;
+use diesel::r2d2::ConnectionManager;
+use diesel::{QueryDsl, Queryable};
+use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::errors::StoreError;
@@ -17,12 +20,17 @@ pub struct ProfileService {
 }
 
 impl ProfileService {
-    fn get_profile(&self, profile_id: String) -> Result<Profile, StoreError> {
-        use crate::schema::profiles::dsl::*;
-        let conn = self.pool.get()?;
-        // let profile = profiles.filter(id.eq(profile_id)).get_result(&mut conn)?;
+    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self {
+            pool: ConnectionPool::new(pool),
+        }
+    }
 
-        // Ok(profile)
-        todo!()
+    pub fn get_profile(&self, profile_id: Uuid) -> Result<Profile, StoreError> {
+        use crate::schema::profiles::dsl::*;
+        let mut conn = self.pool.get()?;
+
+        let profile = profiles.find(profile_id).first(&mut conn)?;
+        Ok(profile)
     }
 }
