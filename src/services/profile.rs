@@ -1,4 +1,5 @@
 use crate::database::ConnectionPool;
+use crate::schema::profiles;
 use async_graphql::SimpleObject;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
@@ -10,13 +11,20 @@ use crate::errors::StoreError;
 
 #[derive(Debug, SimpleObject, Queryable)]
 pub struct Profile {
-    id: Uuid,
-    name: String,
-    email: String,
+    pub id: Uuid,
+    name: Option<String>,
+    email: Option<String>,
 }
 
 pub struct ProfileService {
     pool: ConnectionPool,
+}
+
+#[derive(Insertable, Default)]
+#[diesel(table_name = profiles)]
+struct NewProfile {
+    name: Option<String>,
+    email: Option<String>,
 }
 
 impl ProfileService {
@@ -24,6 +32,14 @@ impl ProfileService {
         Self {
             pool: ConnectionPool::new(pool),
         }
+    }
+
+    pub fn new_profile(&self) -> Result<Profile, StoreError> {
+        use crate::schema::profiles::dsl::*;
+        let mut conn = self.pool.get()?;
+        Ok(diesel::insert_into(profiles)
+            .values(&NewProfile::default())
+            .get_result::<Profile>(&mut conn)?)
     }
 
     pub fn get_profile(&self, profile_id: Uuid) -> Result<Profile, StoreError> {

@@ -3,8 +3,8 @@
 diesel::table! {
     profiles (id) {
         id -> Uuid,
-        name -> Varchar,
-        email -> Varchar,
+        name -> Nullable<Varchar>,
+        email -> Nullable<Varchar>,
     }
 }
 

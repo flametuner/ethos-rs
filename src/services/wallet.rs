@@ -7,10 +7,12 @@ use diesel::{r2d2::ConnectionManager, Insertable, PgConnection, Queryable, RunQu
 use ethers::types::Signature;
 use r2d2::Pool;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
 
 use crate::{database::ConnectionPool, errors::StoreError, schema::wallets};
+
+use super::profile::ProfileService;
 
 #[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize)]
 pub struct Wallet {
@@ -19,13 +21,7 @@ pub struct Wallet {
     nonce: Uuid,
     created_at: chrono::NaiveDateTime,
     updated_at: chrono::NaiveDateTime,
-    profile_id: Uuid,
-}
-
-impl Wallet {
-    pub fn get_profile_id(&self) -> Uuid {
-        self.profile_id
-    }
+    pub profile_id: Uuid,
 }
 
 #[derive(Insertable)]
@@ -33,16 +29,22 @@ impl Wallet {
 struct NewWallet {
     address: String,
     nonce: Uuid,
+    profile_id: Uuid,
 }
 
 pub struct WalletService {
     pool: ConnectionPool,
+    profile_service: Arc<ProfileService>,
 }
 
 impl WalletService {
-    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+    pub fn new(
+        pool: Pool<ConnectionManager<PgConnection>>,
+        profile_service: Arc<ProfileService>,
+    ) -> Self {
         Self {
             pool: ConnectionPool::new(pool),
+            profile_service,
         }
     }
 
@@ -67,10 +69,12 @@ impl WalletService {
             return Ok(wallet);
         }
 
+        let profile = self.profile_service.new_profile()?;
         let mut conn = self.pool.get()?;
         let new_wallet = NewWallet {
             address: to_full_addr(&addr),
             nonce: Uuid::new_v4(),
+            profile_id: profile.id,
         };
         Ok(diesel::insert_into(wallets)
             .values(&new_wallet)
