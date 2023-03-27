@@ -5,6 +5,7 @@ diesel::table! {
         id -> Uuid,
         name -> Nullable<Varchar>,
         email -> Nullable<Varchar>,
+        wallet_id -> Uuid,
     }
 }
 
@@ -27,9 +28,10 @@ diesel::table! {
         nonce -> Uuid,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        profile_id -> Uuid,
     }
 }
+
+diesel::joinable!(profiles -> wallets (wallet_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     profiles,

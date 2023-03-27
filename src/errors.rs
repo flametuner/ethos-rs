@@ -7,8 +7,8 @@ pub enum StoreError {
     #[error("Connection Pool Error: {0:?}")]
     ConnectionPoolError(#[from] r2d2::Error),
 
-    #[error("Wallet with address {0} was not Found")]
-    WalletNotFound(String),
+    // #[error("Wallet with address {0} was not Found")]
+    // WalletNotFound(String),
     // #[error("Load Error")]
     // LoadError,
     #[error("Failed to create JWT{0:?}")]

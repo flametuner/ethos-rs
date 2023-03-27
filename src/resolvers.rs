@@ -26,8 +26,8 @@ impl QueryRoot {
     #[graphql(guard = "IsAuthenticated")]
     async fn profile<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Profile, StoreError> {
         let wallet = ctx.data_unchecked::<Wallet>();
-        let service = ctx.data::<Arc<ProfileService>>().unwrap();
-        service.get_profile(wallet.profile_id)
+        let service = ctx.data::<ProfileService>().unwrap();
+        service.get_profile(wallet)
     }
 
     async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, StoreError> {

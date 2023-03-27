@@ -1,4 +1,4 @@
-use std::env;
+use std::{collections::HashSet, env};
 
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{de::DeserializeOwned, Serialize};
@@ -22,6 +22,7 @@ impl JwtAuthentication {
             &obj,
             &EncodingKey::from_secret(self.secret.as_ref()),
         );
+        println!("Token {:?}", token);
         token
     }
 
@@ -29,8 +30,9 @@ impl JwtAuthentication {
         &self,
         token: &str,
     ) -> Result<T, jsonwebtoken::errors::Error> {
-        let validation = Validation::default();
-        // validation.validate_exp = false;
+        let mut validation = Validation::default();
+        validation.validate_exp = false;
+        validation.required_spec_claims = HashSet::new();
         let decoded = decode::<T>(
             token,
             &DecodingKey::from_secret(self.secret.as_ref()),

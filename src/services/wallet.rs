@@ -7,21 +7,19 @@ use diesel::{r2d2::ConnectionManager, Insertable, PgConnection, Queryable, RunQu
 use ethers::types::Signature;
 use r2d2::Pool;
 use serde::{Deserialize, Serialize};
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::{database::ConnectionPool, errors::StoreError, schema::wallets};
 
-use super::profile::ProfileService;
-
-#[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize)]
+#[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize, Identifiable)]
+#[diesel(table_name = wallets)]
 pub struct Wallet {
-    id: Uuid,
+    pub id: Uuid,
     address: String,
     nonce: Uuid,
     created_at: chrono::NaiveDateTime,
     updated_at: chrono::NaiveDateTime,
-    pub profile_id: Uuid,
 }
 
 #[derive(Insertable)]
@@ -29,22 +27,16 @@ pub struct Wallet {
 struct NewWallet {
     address: String,
     nonce: Uuid,
-    profile_id: Uuid,
 }
 
 pub struct WalletService {
     pool: ConnectionPool,
-    profile_service: Arc<ProfileService>,
 }
 
 impl WalletService {
-    pub fn new(
-        pool: Pool<ConnectionManager<PgConnection>>,
-        profile_service: Arc<ProfileService>,
-    ) -> Self {
+    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
         Self {
             pool: ConnectionPool::new(pool),
-            profile_service,
         }
     }
 
@@ -52,16 +44,12 @@ impl WalletService {
         use crate::schema::wallets::dsl::*;
         let mut conn = self.pool.get()?;
 
-        let mut wallet = wallets
+        let wallet = wallets
             .filter(address.eq(to_full_addr(&addr)))
-            .limit(1)
-            .load::<Wallet>(&mut *conn)?;
-        if let Some(wallet) = wallet.pop() {
-            Ok(wallet)
-        } else {
-            Err(StoreError::WalletNotFound(to_full_addr(&addr)))
-        }
+            .first::<Wallet>(&mut *conn)?;
+        Ok(wallet)
     }
+
     pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
         use crate::schema::wallets::dsl::*;
 
@@ -69,12 +57,10 @@ impl WalletService {
             return Ok(wallet);
         }
 
-        let profile = self.profile_service.new_profile()?;
         let mut conn = self.pool.get()?;
         let new_wallet = NewWallet {
             address: to_full_addr(&addr),
             nonce: Uuid::new_v4(),
-            profile_id: profile.id,
         };
         Ok(diesel::insert_into(wallets)
             .values(&new_wallet)
@@ -87,10 +73,12 @@ impl WalletService {
         let mut conn = self.pool.get()?;
 
         let new_nonce = Uuid::new_v4();
-        Ok(diesel::update(wallets)
+        let wallet = diesel::update(wallets)
             .filter(address.eq(to_full_addr(&addr)))
             .set(nonce.eq(new_nonce))
-            .get_result::<Wallet>(&mut conn)?)
+            .get_result::<Wallet>(&mut conn)?;
+
+        Ok(wallet)
     }
 
     pub async fn verify_signature(

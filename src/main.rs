@@ -44,11 +44,8 @@ async fn main() {
     // services setup
     println!("Setting up services...");
     let project_service = ProjectService::new(database_connection.clone());
-    let profile_service = Arc::new(ProfileService::new(database_connection.clone()));
-    let wallet_service = Arc::new(WalletService::new(
-        database_connection.clone(),
-        profile_service.clone(),
-    ));
+    let profile_service = ProfileService::new(database_connection.clone());
+    let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
     let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
 
     // schema setup
