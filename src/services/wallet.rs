@@ -16,7 +16,7 @@ use crate::{database::ConnectionPool, errors::StoreError, schema::wallets};
 #[diesel(table_name = wallets)]
 pub struct Wallet {
     pub id: Uuid,
-    address: String,
+    pub address: String,
     nonce: Uuid,
     created_at: chrono::NaiveDateTime,
     updated_at: chrono::NaiveDateTime,

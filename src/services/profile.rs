@@ -1,24 +1,45 @@
 use crate::database::ConnectionPool;
+use crate::guards::is_authenticated::IsAuthenticated;
 use crate::schema::profiles;
 use crate::services::wallet::Wallet;
+use async_graphql::{ComplexObject, Context};
 use async_graphql::{InputObject, SimpleObject};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::Queryable;
+use ethers::types::Address;
 use r2d2::Pool;
+use std::str::FromStr;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::errors::StoreError;
 
+use super::wallet::WalletService;
+
 #[derive(Debug, SimpleObject, Queryable, Associations, Identifiable)]
 #[diesel(belongs_to(Wallet))]
 #[diesel(table_name = profiles)]
+#[graphql(complex)]
 pub struct Profile {
     pub id: Uuid,
     name: Option<String>,
     email: Option<String>,
     #[graphql(skip)]
     wallet_id: Uuid,
+}
+
+#[ComplexObject]
+impl Profile {
+    #[graphql(guard = "IsAuthenticated")]
+    pub async fn wallet(&self, ctx: &Context<'_>) -> Result<Wallet, StoreError> {
+        let wallet = ctx.data_unchecked::<Wallet>();
+
+        let wallet_service = ctx.data::<Arc<WalletService>>().unwrap();
+        let addr = Address::from_str(&wallet.address)?;
+        let wallet = wallet_service.get_wallet(&addr)?;
+        Ok(wallet)
+    }
 }
 
 pub struct ProfileService {

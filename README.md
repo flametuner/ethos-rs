@@ -9,7 +9,7 @@ It'll be tested for serverless environment and coldstarts.
 ## Features
 
 - [ ] Project tenants
-- [ ] Wallets, Profiles and login with Signatures via Wallet
+- [x] Wallets, Profiles and login with Signatures via Wallet
 - [ ] Collections, Nfts, Attributes and REST endpoints, etc
 - [ ] Notifications via email using Queues
 - [ ] Jobs fetching tickets and sending them email
