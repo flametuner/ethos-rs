@@ -45,7 +45,7 @@ impl QueryRoot {
     }
 
     async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, StoreError> {
-        let service = ctx.data::<ProjectService>().unwrap();
+        let service = ctx.data::<Arc<ProjectService>>().unwrap();
         service.get_projects()
     }
 }

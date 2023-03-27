@@ -6,7 +6,7 @@ use crate::{database::ConnectionPool, errors::StoreError, schema::projects};
 use diesel::{Insertable, Queryable};
 use uuid::Uuid;
 
-#[derive(Queryable, SimpleObject, Identifiable)]
+#[derive(Debug, Queryable, SimpleObject, Identifiable)]
 #[diesel(table_name = projects)]
 pub struct Project {
     pub id: Uuid,
@@ -54,10 +54,10 @@ impl ProjectService {
             .get_result::<Project>(&mut conn)?)
     }
 
-    pub fn get_project(&self, id: Uuid) -> Result<Project, StoreError> {
+    pub fn get_project(&self, project: Uuid) -> Result<Project, StoreError> {
         use crate::schema::projects::dsl::*;
         let mut conn = self.pool.get()?;
-        let project = projects.find(id).first(&mut conn)?;
+        let project = projects.find(project).first(&mut conn)?;
         Ok(project)
     }
 
