@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
 use async_graphql::*;
@@ -14,8 +14,9 @@ use database::create_connection_pool;
 use dotenvy::dotenv;
 use resolvers::{MutationRoot, MySchema, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
+use uuid::Uuid;
 
-use crate::services::profile::ProfileService;
+use crate::services::{nft::CollectionService, profile::ProfileService};
 
 mod database;
 mod errors;
@@ -24,6 +25,11 @@ mod jwt;
 mod resolvers;
 pub mod schema;
 mod services;
+
+struct AppState {
+    auth_service: Arc<AuthService>,
+    project_service: Arc<ProjectService>,
+}
 
 #[tokio::main]
 async fn main() {
@@ -43,18 +49,20 @@ async fn main() {
     );
     // services setup
     println!("Setting up services...");
-    let project_service = ProjectService::new(database_connection.clone());
+    let project_service = Arc::new(ProjectService::new(database_connection.clone()));
     let profile_service = ProfileService::new(database_connection.clone());
     let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
     let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
+    let collection_service = CollectionService::new(database_connection.clone());
 
     // schema setup
     println!("Setting up schema...");
     let schema = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
-        .data(project_service)
+        .data(project_service.clone())
         .data(wallet_service)
         .data(auth_service.clone())
         .data(profile_service)
+        .data(collection_service)
         .finish();
 
     // cors setup
@@ -64,13 +72,19 @@ async fn main() {
     // ];
     println!("Setting up cors...");
     let cors = CorsLayer::permissive().expose_headers(Any);
+
+    let state = Arc::new(AppState {
+        auth_service,
+        project_service,
+    });
+
     // axum setup
     let app = Router::new()
         .route("/", get(graphiql))
         .route("/graphql", post(graphql_handler))
         .layer(Extension(schema))
         .layer(cors)
-        .with_state(auth_service);
+        .with_state(state);
 
     // liftoff
     println!("Liftoff in {}ms", now.elapsed().as_millis());
@@ -92,16 +106,33 @@ fn get_token_from_headers(headers: &HeaderMap) -> Option<String> {
         })
     })
 }
+
+fn get_project_from_headers(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get("project")
+        .and_then(|value| value.to_str().ok().map(|v| v.to_string()))
+}
+
 async fn graphql_handler(
     schema: Extension<MySchema>,
-    State(auth): State<Arc<AuthService>>,
+    State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
+    let auth = &state.auth_service;
+    let project_service = &state.project_service;
+
     let mut req = req.into_inner();
     if let Some(token) = get_token_from_headers(&headers) {
         if let Ok(wallet) = auth.validate(token.as_str()).await {
             req = req.data(wallet);
+        }
+    }
+    if let Some(project_id) = get_project_from_headers(&headers) {
+        if let Ok(id) = Uuid::from_str(&project_id) {
+            if let Ok(project) = project_service.get_project(id) {
+                req = req.data(project);
+            }
         }
     }
     schema.execute(req).await.into()

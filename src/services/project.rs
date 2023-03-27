@@ -6,9 +6,10 @@ use crate::{database::ConnectionPool, errors::StoreError, schema::projects};
 use diesel::{Insertable, Queryable};
 use uuid::Uuid;
 
-#[derive(Queryable, SimpleObject)]
+#[derive(Queryable, SimpleObject, Identifiable)]
+#[diesel(table_name = projects)]
 pub struct Project {
-    id: Uuid,
+    pub id: Uuid,
     name: String,
     description: Option<String>,
     url: Option<String>,
@@ -51,6 +52,13 @@ impl ProjectService {
         Ok(diesel::insert_into(projects::table)
             .values(&insert)
             .get_result::<Project>(&mut conn)?)
+    }
+
+    pub fn get_project(&self, id: Uuid) -> Result<Project, StoreError> {
+        use crate::schema::projects::dsl::*;
+        let mut conn = self.pool.get()?;
+        let project = projects.find(id).first(&mut conn)?;
+        Ok(project)
     }
 
     pub fn get_projects(&self) -> Result<Vec<Project>, StoreError> {

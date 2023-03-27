@@ -1,4 +1,11 @@
-use crate::{guards::is_authenticated::IsAuthenticated, services::profile::UpdateProfileInput};
+use crate::guards::with_project::WithProject;
+use crate::{
+    guards::is_authenticated::IsAuthenticated,
+    services::{
+        nft::{Collection, CollectionService},
+        profile::UpdateProfileInput,
+    },
+};
 use async_graphql::{Context, EmptySubscription, Object, Schema};
 use ethers::types::Address;
 use std::{str::FromStr, sync::Arc};
@@ -30,6 +37,13 @@ impl QueryRoot {
         service.get_profile(wallet)
     }
 
+    #[graphql(guard = "WithProject")]
+    async fn collections<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Collection>, StoreError> {
+        let service = ctx.data::<CollectionService>().unwrap();
+        let project = ctx.data::<Project>().unwrap();
+        service.get_collections(project)
+    }
+
     async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, StoreError> {
         let service = ctx.data::<ProjectService>().unwrap();
         service.get_projects()
@@ -46,7 +60,7 @@ impl MutationRoot {
         name: String,
         description: Option<String>,
     ) -> Result<Project, StoreError> {
-        let service = ctx.data::<ProjectService>().unwrap();
+        let service = ctx.data::<Arc<ProjectService>>().unwrap();
         service.create_project(name, description)
     }
 
