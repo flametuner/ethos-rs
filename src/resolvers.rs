@@ -1,4 +1,4 @@
-use crate::guards::is_authenticated::IsAuthenticated;
+use crate::{guards::is_authenticated::IsAuthenticated, services::profile::UpdateProfileInput};
 use async_graphql::{Context, EmptySubscription, Object, Schema};
 use ethers::types::Address;
 use std::{str::FromStr, sync::Arc};
@@ -48,6 +48,18 @@ impl MutationRoot {
     ) -> Result<Project, StoreError> {
         let service = ctx.data::<ProjectService>().unwrap();
         service.create_project(name, description)
+    }
+
+    #[graphql(guard = "IsAuthenticated")]
+    async fn update_profile<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        input: UpdateProfileInput,
+    ) -> Result<Profile, StoreError> {
+        let wallet = ctx.data_unchecked::<Wallet>();
+        let service = ctx.data::<ProfileService>().unwrap();
+        let profile = service.update_profile(wallet, input.name, input.email)?;
+        Ok(profile)
     }
 
     async fn wallet<'ctx>(

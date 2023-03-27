@@ -83,10 +83,13 @@ async fn main() {
 
 fn get_token_from_headers(headers: &HeaderMap) -> Option<String> {
     headers.get("Authorization").and_then(|value| {
-        value
-            .to_str()
-            .ok()
-            .map(|s| s.to_string().replace("Bearer ", ""))
+        value.to_str().ok().map(|s| {
+            let s = s.to_string();
+            if s.to_lowercase().contains("bearer ") {
+                return s[7..].to_string();
+            }
+            s
+        })
     })
 }
 async fn graphql_handler(

@@ -1,7 +1,7 @@
 use crate::database::ConnectionPool;
 use crate::schema::profiles;
 use crate::services::wallet::Wallet;
-use async_graphql::SimpleObject;
+use async_graphql::{InputObject, SimpleObject};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::Queryable;
@@ -33,6 +33,12 @@ struct NewProfile {
     email: Option<String>,
 }
 
+#[derive(InputObject)]
+pub struct UpdateProfileInput {
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
 impl ProfileService {
     pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
         Self {
@@ -61,5 +67,20 @@ impl ProfileService {
             Some(profile) => Ok(profile),
             None => Ok(self.new_profile(wallet.id)?),
         }
+    }
+
+    pub fn update_profile(
+        &self,
+        wallet: &Wallet,
+        name_input: Option<String>,
+        email_input: Option<String>,
+    ) -> Result<Profile, StoreError> {
+        use crate::schema::profiles::dsl::*;
+        let mut conn = self.pool.get()?;
+        let profile = diesel::update(profiles)
+            .filter(wallet_id.eq(wallet.id))
+            .set((name.eq(name_input), email.eq(email_input)))
+            .get_result(&mut conn)?;
+        Ok(profile)
     }
 }
