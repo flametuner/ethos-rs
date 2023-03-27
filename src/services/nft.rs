@@ -1,4 +1,4 @@
-use async_graphql::SimpleObject;
+use async_graphql::{Enum, SimpleObject};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::{Identifiable, PgConnection, Queryable};
@@ -7,15 +7,24 @@ use uuid::Uuid;
 
 use crate::database::ConnectionPool;
 use crate::errors::StoreError;
-use crate::schema::collections;
+use crate::schema::{
+    attributes_on_nfts, collection_contracts, collections, networks, nft_attributes, nfts,
+};
 
 use super::project::Project;
+use super::wallet::Wallet;
 
+#[derive(Queryable, SimpleObject, Identifiable)]
+#[diesel(table_name = networks)]
 struct Network {
     id: Uuid,
-    chain_id: u32,
+    chain_id: i32,
 }
 
+#[derive(Queryable, SimpleObject, Identifiable, Associations)]
+#[diesel(table_name = collection_contracts)]
+#[diesel(belongs_to(Network))]
+#[diesel(belongs_to(Collection))]
 struct CollectionContract {
     id: Uuid,
     // contract id on bifrost
@@ -46,6 +55,11 @@ pub struct Collection {
     updated_at: chrono::NaiveDateTime,
 }
 
+#[derive(Queryable, SimpleObject, Associations, Identifiable)]
+#[diesel(belongs_to(Wallet, foreign_key = owner_id))]
+#[diesel(belongs_to(CollectionContract, foreign_key = network_contract_id))]
+#[diesel(belongs_to(Collection))]
+#[diesel(table_name = nfts)]
 struct Nft {
     id: Uuid,
     nft_id: u32,
@@ -62,11 +76,18 @@ struct Nft {
     network_contract_id: Uuid,
 }
 
+#[derive(Queryable, SimpleObject, Associations, Identifiable)]
+#[diesel(belongs_to(NftAttributes, foreign_key = attribute_id))]
+#[diesel(belongs_to(Nft))]
+#[diesel(primary_key(nft_id, attribute_id))]
+#[diesel(table_name = attributes_on_nfts)]
 struct AttributesOnNft {
     nft_id: Uuid,
     attribute_id: Uuid,
 }
 
+#[derive(Queryable, SimpleObject, Identifiable)]
+#[diesel(table_name = nft_attributes)]
 struct NftAttributes {
     id: Uuid,
     trait_type: Option<String>,
@@ -75,6 +96,7 @@ struct NftAttributes {
     display_type: Option<DisplayType>,
 }
 
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
 enum DisplayType {
     Number,
     BoostPercentage,
@@ -96,6 +118,28 @@ impl CollectionService {
         let mut conn = self.pool.get()?;
 
         let result = Collection::belonging_to(&project).load::<Collection>(&mut conn)?;
+        Ok(result)
+    }
+}
+
+pub struct NetworkService {
+    pool: ConnectionPool,
+}
+
+impl NetworkService {
+    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self {
+            pool: ConnectionPool::new(pool),
+        }
+    }
+
+    pub fn get_network_by_id(&self, chain: i32) -> Result<Network, StoreError> {
+        use crate::schema::networks::dsl::*;
+        let mut conn = self.pool.get()?;
+
+        let result = networks
+            .filter(chain_id.eq(chain))
+            .first::<Network>(&mut conn)?;
         Ok(result)
     }
 }

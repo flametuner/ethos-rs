@@ -16,7 +16,10 @@ use resolvers::{MutationRoot, MySchema, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 use uuid::Uuid;
 
-use crate::services::{nft::CollectionService, profile::ProfileService};
+use crate::services::{
+    nft::{CollectionService, NetworkService},
+    profile::ProfileService,
+};
 
 mod database;
 mod errors;
@@ -54,6 +57,7 @@ async fn main() {
     let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
     let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
     let collection_service = CollectionService::new(database_connection.clone());
+    let network_service = NetworkService::new(database_connection.clone());
 
     // schema setup
     println!("Setting up schema...");
@@ -62,6 +66,7 @@ async fn main() {
         .data(wallet_service)
         .data(auth_service.clone())
         .data(profile_service)
+        .data(network_service)
         .data(collection_service)
         .finish();
 
