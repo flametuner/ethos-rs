@@ -2,7 +2,7 @@ use crate::guards::with_project::WithProject;
 use crate::{
     guards::is_authenticated::IsAuthenticated,
     services::{
-        nft::{Collection, CollectionService},
+        nft::{Collection, NftService},
         profile::UpdateProfileInput,
     },
 };
@@ -39,7 +39,7 @@ impl QueryRoot {
 
     #[graphql(guard = "WithProject")]
     async fn collections<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Collection>, StoreError> {
-        let service = ctx.data::<CollectionService>().unwrap();
+        let service = ctx.data::<NftService>().unwrap();
         let project = ctx.data::<Project>().unwrap();
         service.get_collections(project)
     }
@@ -61,7 +61,7 @@ impl MutationRoot {
         description: Option<String>,
     ) -> Result<Project, StoreError> {
         let service = ctx.data::<Arc<ProjectService>>().unwrap();
-        service.create_project(name, description)
+        service.create_project(&name, description)
     }
 
     #[graphql(guard = "IsAuthenticated")]

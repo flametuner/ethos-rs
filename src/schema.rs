@@ -10,7 +10,7 @@ diesel::table! {
 diesel::table! {
     collection_contracts (id) {
         id -> Uuid,
-        contract_id -> Uuid,
+        contract_id -> Nullable<Uuid>,
         address -> Varchar,
         fee_recipient -> Varchar,
         collection_id -> Uuid,

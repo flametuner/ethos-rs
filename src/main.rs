@@ -16,12 +16,9 @@ use resolvers::{MutationRoot, MySchema, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 use uuid::Uuid;
 
-use crate::services::{
-    nft::{CollectionService, NetworkService},
-    profile::ProfileService,
-};
+use crate::services::{nft::NftService, profile::ProfileService};
 
-mod database;
+pub mod database;
 mod errors;
 mod guards;
 mod jwt;
@@ -56,8 +53,8 @@ async fn main() {
     let profile_service = ProfileService::new(database_connection.clone());
     let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
     let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
-    let collection_service = CollectionService::new(database_connection.clone());
-    let network_service = NetworkService::new(database_connection.clone());
+    let collection_service = NftService::new(database_connection.clone());
+    let nft_service = NftService::new(database_connection.clone());
 
     // schema setup
     println!("Setting up schema...");
@@ -66,7 +63,7 @@ async fn main() {
         .data(wallet_service)
         .data(auth_service.clone())
         .data(profile_service)
-        .data(network_service)
+        .data(nft_service)
         .data(collection_service)
         .finish();
 
@@ -145,4 +142,10 @@ async fn graphql_handler(
 
 async fn graphiql() -> impl IntoResponse {
     response::Html(http::GraphiQLSource::build().endpoint("/graphql").finish())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn schema() {}
 }

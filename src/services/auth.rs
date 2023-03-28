@@ -17,7 +17,6 @@ pub struct AuthService {
     wallet_service: Arc<WalletService>,
     jwt_auth: JwtAuthentication,
 }
-
 impl AuthService {
     pub fn new(wallet_service: Arc<WalletService>) -> Self {
         AuthService {

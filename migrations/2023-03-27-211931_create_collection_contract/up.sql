@@ -1,9 +1,9 @@
 -- Your SQL goes here
 
 CREATE TABLE collection_contracts (
-    id uuid PRIMARY KEY,
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     
-    contract_id uuid NOT NULL,
+    contract_id uuid,
 
     address varchar(255) NOT NULL,
     fee_recipient varchar(255) NOT NULL,

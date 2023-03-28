@@ -39,11 +39,11 @@ impl ProjectService {
 
     pub fn create_project(
         &self,
-        name: String,
+        name: &str,
         description: Option<String>,
     ) -> Result<Project, StoreError> {
         let insert = NewProject {
-            name,
+            name: name.to_string(),
             description,
             url: None,
             cors: vec![],
@@ -58,6 +58,13 @@ impl ProjectService {
         use crate::schema::projects::dsl::*;
         let mut conn = self.pool.get()?;
         let project = projects.find(project).first(&mut conn)?;
+        Ok(project)
+    }
+
+    pub fn get_project_by_name(&self, project_name: &str) -> Result<Project, StoreError> {
+        use crate::schema::projects::dsl::*;
+        let mut conn = self.pool.get()?;
+        let project = projects.filter(name.eq(project_name)).first(&mut conn)?;
         Ok(project)
     }
 
