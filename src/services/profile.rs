@@ -57,6 +57,7 @@ struct NewProfile {
 #[derive(InputObject)]
 pub struct UpdateProfileInput {
     pub name: Option<String>,
+    #[graphql(validator(email))]
     pub email: Option<String>,
 }
 
