@@ -4,7 +4,7 @@ use dotenvy::dotenv;
 use ethos_rs::{
     database::create_connection_pool,
     services::{
-        nft::{Network, NftService},
+        nft::{CollectionContract, Network, NewNft, Nft, NftService},
         project::ProjectService,
     },
 };
@@ -69,9 +69,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // create collection contracts
 
-    networks
+    let collection_contracts: Vec<CollectionContract> = networks
         .into_iter()
-        .for_each(|(network, contract_address, fee_recipient)| {
+        .map(|(network, contract_address, fee_recipient)| {
             let collection_contract =
                 match nft_service.get_collection_contract_by_address(&network, contract_address) {
                     Ok(collection_contract) => collection_contract,
@@ -86,6 +86,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
 
             println!("{:?}", collection_contract);
-        });
+            collection_contract
+        })
+        .collect();
+
+    let image_url = "https://assets.taipe.xyz/nft";
+    let animation_url = "https://singulari3-turborepo-backoffice.vercel.app/collection";
+    let description = "🪩 🦎 Langoo! 🦎 🪩 ∞ ∞ There are 12.000 Langoos! around. They are Brazilian Mystic Creatures ready to steal the spotlight.Langoo! is a metaphor · a lifestyle.Some of them live in the jungle · Some in the big cities · But they really like the coast · They've evolved from there to the rest of the world. They're here way before us. They represent a concept long forgot; ¨ancestry¨.But the flame is still alive ... Each category has its own lore. Visit https://festadotaipe.xyz/onboarding for more info.";
+
+    let nfts_data: Vec<NewNft> = (1..=12000)
+        .map(|i| {
+            let extension = if i <= 25 { "gif " } else { "png" };
+            let contract_network = if i <= 25 {
+                collection_contracts.get(0).unwrap()
+            } else {
+                collection_contracts.get(1).unwrap()
+            };
+            if i % 1000 == 0 {
+                println!("{} - {}", i, contract_network.id);
+            }
+            let nft_data = NewNft {
+                nft_id: i,
+                name: format!("Langoo! {}", i),
+                image: format!("{}/{}.{}", image_url, i, extension),
+                description: description.to_string(),
+                external_url: format!("https://taipe.xyz/nft/{}", i),
+                animation_url: format!("{}/{}/nft/{}", animation_url, collection.id.to_string(), i),
+                collection_id: collection.id,
+                network_contract_id: contract_network.id,
+            };
+            nft_data
+        })
+        .collect();
+
+    let nfts = nfts_data
+        .chunks(1000)
+        .into_iter()
+        .map(|chunk| {
+            let nfts = nft_service.create_nfts(chunk.to_vec()).unwrap();
+            nfts
+        })
+        .flatten()
+        .collect::<Vec<Nft>>();
+
+    println!("{} nfts created", nfts.len());
+    // println!("First nft: {:?}", nfts.get(0).unwrap());
+    // println!("Last nft: {:?}", nfts.get(nfts.len() - 1).unwrap());
+
     Ok(())
 }

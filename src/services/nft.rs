@@ -26,7 +26,7 @@ pub struct Network {
 #[diesel(belongs_to(Collection))]
 #[diesel(belongs_to(Network))]
 pub struct CollectionContract {
-    id: Uuid,
+    pub id: Uuid,
     // contract id on bifrost
     contract_id: Option<Uuid>,
     // fee recipient address
@@ -43,7 +43,7 @@ pub struct CollectionContract {
 #[diesel(belongs_to(Project))]
 #[diesel(table_name = collections)]
 pub struct Collection {
-    id: Uuid,
+    pub id: Uuid,
     name: String,
     description: Option<String>,
     image: Option<String>,
@@ -55,19 +55,32 @@ pub struct Collection {
     updated_at: chrono::NaiveDateTime,
 }
 
-#[derive(Queryable, SimpleObject, Associations, Identifiable)]
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = nfts)]
+pub struct NewNft {
+    pub nft_id: i32,
+    pub name: String,
+    pub image: String,
+    pub description: String,
+    pub external_url: String,
+    pub animation_url: String,
+
+    pub collection_id: Uuid,
+    pub network_contract_id: Uuid,
+}
+
+#[derive(Debug, Queryable, SimpleObject, Associations, Identifiable)]
 #[diesel(belongs_to(Wallet, foreign_key = owner_id))]
 #[diesel(belongs_to(CollectionContract, foreign_key = network_contract_id))]
 #[diesel(belongs_to(Collection))]
 #[diesel(table_name = nfts)]
-struct Nft {
+pub struct Nft {
     id: Uuid,
-    nft_id: u32,
+    nft_id: i32,
     name: String,
-    image: String,
     description: String,
-    minted: bool,
-    minted_at: chrono::NaiveDateTime,
+    minted_at: Option<chrono::NaiveDateTime>,
+    image: String,
     external_url: String,
     animation_url: String,
 
@@ -251,6 +264,16 @@ impl NftService {
             .filter(address.eq(addr))
             .filter(network_id.eq(network.id))
             .first::<CollectionContract>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn create_nfts(&self, nft_list: Vec<NewNft>) -> Result<Vec<Nft>, StoreError> {
+        use crate::schema::nfts::dsl::*;
+        let mut conn = self.pool.get()?;
+
+        let result = diesel::insert_into(nfts)
+            .values(nft_list)
+            .get_results::<Nft>(&mut conn)?;
         Ok(result)
     }
 }

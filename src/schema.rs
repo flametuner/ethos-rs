@@ -58,6 +58,7 @@ diesel::table! {
         minted_at -> Nullable<Timestamp>,
         image -> Varchar,
         external_url -> Varchar,
+        animation_url -> Varchar,
         owner_id -> Nullable<Uuid>,
         collection_id -> Uuid,
         network_contract_id -> Uuid,
@@ -100,6 +101,8 @@ diesel::joinable!(attributes_on_nfts -> nfts (nft_id));
 diesel::joinable!(collection_contracts -> collections (collection_id));
 diesel::joinable!(collection_contracts -> networks (network_id));
 diesel::joinable!(collections -> projects (project_id));
+diesel::joinable!(nfts -> collection_contracts (network_contract_id));
+diesel::joinable!(nfts -> collections (collection_id));
 diesel::joinable!(nfts -> wallets (owner_id));
 diesel::joinable!(profiles -> wallets (wallet_id));
 

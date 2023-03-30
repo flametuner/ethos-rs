@@ -8,8 +8,9 @@ CREATE TABLE nfts (
   minted_at TIMESTAMP,
   image VARCHAR(255) NOT NULL,
   external_url VARCHAR(255) NOT NULL,
+  animation_url VARCHAR(255) NOT NULL,
   
   owner_id uuid REFERENCES wallets(id),
   collection_id uuid NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-  network_contract_id uuid NOT NULL REFERENCES collections(id) ON DELETE CASCADE
+  network_contract_id uuid NOT NULL REFERENCES collection_contracts(id) ON DELETE CASCADE
 );
