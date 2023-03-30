@@ -13,7 +13,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::errors::StoreError;
+use crate::errors::EthosError;
 
 use super::wallet::WalletService;
 
@@ -32,7 +32,7 @@ pub struct Profile {
 #[ComplexObject]
 impl Profile {
     #[graphql(guard = "IsAuthenticated")]
-    pub async fn wallet(&self, ctx: &Context<'_>) -> Result<Wallet, StoreError> {
+    pub async fn wallet(&self, ctx: &Context<'_>) -> Result<Wallet, EthosError> {
         let wallet = ctx.data_unchecked::<Wallet>();
 
         let wallet_service = ctx.data::<Arc<WalletService>>().unwrap();
@@ -68,7 +68,7 @@ impl ProfileService {
         }
     }
 
-    pub fn new_profile(&self, wallet: Uuid) -> Result<Profile, StoreError> {
+    pub fn new_profile(&self, wallet: Uuid) -> Result<Profile, EthosError> {
         use crate::schema::profiles::dsl::*;
         let mut conn = self.pool.get()?;
         let new_profile = NewProfile {
@@ -80,7 +80,7 @@ impl ProfileService {
             .get_result::<Profile>(&mut conn)?)
     }
 
-    pub fn get_profile(&self, wallet: &Wallet) -> Result<Profile, StoreError> {
+    pub fn get_profile(&self, wallet: &Wallet) -> Result<Profile, EthosError> {
         let mut conn = self.pool.get()?;
 
         let profile = Profile::belonging_to(&wallet).first(&mut conn).optional()?;
@@ -96,7 +96,7 @@ impl ProfileService {
         wallet: &Wallet,
         name_input: Option<String>,
         email_input: Option<String>,
-    ) -> Result<Profile, StoreError> {
+    ) -> Result<Profile, EthosError> {
         use crate::schema::profiles::dsl::*;
         let mut conn = self.pool.get()?;
         let profile = diesel::update(profiles)

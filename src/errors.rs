@@ -3,7 +3,7 @@ use ethers::types::SignatureError;
 use fixed_hash::rustc_hex::FromHexError;
 
 #[derive(Debug, thiserror::Error)]
-pub enum StoreError {
+pub enum EthosError {
     #[error("Connection Pool Error: {0:?}")]
     ConnectionPoolError(#[from] r2d2::Error),
 
@@ -25,11 +25,11 @@ pub enum StoreError {
     DatabaseError(#[from] diesel::result::Error),
 }
 
-impl ErrorExtensions for StoreError {
+impl ErrorExtensions for EthosError {
     fn extend(&self) -> Error {
         Error::new(format!("{}", self)).extend_with(|_err, e| match self {
-            StoreError::ConnectionPoolError(_) => e.set("code", 500),
-            StoreError::DatabaseError(err) => {
+            EthosError::ConnectionPoolError(_) => e.set("code", 500),
+            EthosError::DatabaseError(err) => {
                 println!("{:?}", err);
                 e.set("message", err.to_string());
             }

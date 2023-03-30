@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::{database::ConnectionPool, errors::StoreError, schema::wallets};
+use crate::{database::ConnectionPool, errors::EthosError, schema::wallets};
 
 #[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize, Identifiable)]
 #[diesel(table_name = wallets)]
@@ -40,7 +40,7 @@ impl WalletService {
         }
     }
 
-    pub fn get_wallet(&self, addr: &Address) -> Result<Wallet, StoreError> {
+    pub fn get_wallet(&self, addr: &Address) -> Result<Wallet, EthosError> {
         use crate::schema::wallets::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -50,7 +50,7 @@ impl WalletService {
         Ok(wallet)
     }
 
-    pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
+    pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, EthosError> {
         use crate::schema::wallets::dsl::*;
 
         let wallet = match self.get_wallet(&addr) {
@@ -70,7 +70,7 @@ impl WalletService {
         Ok(wallet)
     }
 
-    fn update_nonce(&self, addr: Address) -> Result<Wallet, StoreError> {
+    fn update_nonce(&self, addr: Address) -> Result<Wallet, EthosError> {
         use crate::schema::wallets::dsl::*;
 
         let mut conn = self.pool.get()?;
@@ -88,7 +88,7 @@ impl WalletService {
         &self,
         addr: Address,
         signature: String,
-    ) -> Result<Wallet, StoreError> {
+    ) -> Result<Wallet, EthosError> {
         // verify signature
         let signature = Signature::from_str(&signature)?;
         // retrive the nonce from the dattabase

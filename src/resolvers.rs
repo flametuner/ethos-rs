@@ -6,12 +6,12 @@ use crate::{
         profile::UpdateProfileInput,
     },
 };
-use async_graphql::{Context, EmptySubscription, Object, Schema};
+use async_graphql::{Context, Object};
 use ethers::types::Address;
 use std::{str::FromStr, sync::Arc};
 
 use crate::{
-    errors::StoreError,
+    errors::EthosError,
     services::{
         auth::{AuthService, LoginResponse},
         profile::{Profile, ProfileService},
@@ -19,8 +19,6 @@ use crate::{
         wallet::{Wallet, WalletService},
     },
 };
-
-pub type MySchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub struct QueryRoot;
 
@@ -31,20 +29,20 @@ impl QueryRoot {
     }
 
     #[graphql(guard = "IsAuthenticated")]
-    async fn profile<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Profile, StoreError> {
+    async fn profile<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Profile, EthosError> {
         let wallet = ctx.data_unchecked::<Wallet>();
         let service = ctx.data::<ProfileService>().unwrap();
         service.get_profile(wallet)
     }
 
     #[graphql(guard = "WithProject")]
-    async fn collections<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Collection>, StoreError> {
+    async fn collections<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Collection>, EthosError> {
         let service = ctx.data::<NftService>().unwrap();
         let project = ctx.data::<Project>().unwrap();
         service.get_collections(project)
     }
 
-    async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, StoreError> {
+    async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, EthosError> {
         let service = ctx.data::<Arc<ProjectService>>().unwrap();
         service.get_projects()
     }
@@ -59,7 +57,7 @@ impl MutationRoot {
         ctx: &Context<'ctx>,
         name: String,
         description: Option<String>,
-    ) -> Result<Project, StoreError> {
+    ) -> Result<Project, EthosError> {
         let service = ctx.data::<Arc<ProjectService>>().unwrap();
         service.create_project(&name, description)
     }
@@ -69,7 +67,7 @@ impl MutationRoot {
         &self,
         ctx: &Context<'ctx>,
         input: UpdateProfileInput,
-    ) -> Result<Profile, StoreError> {
+    ) -> Result<Profile, EthosError> {
         let wallet = ctx.data_unchecked::<Wallet>();
         let service = ctx.data::<ProfileService>().unwrap();
         let profile = service.update_profile(wallet, input.name, input.email)?;
@@ -80,7 +78,7 @@ impl MutationRoot {
         &self,
         ctx: &Context<'ctx>,
         address: String,
-    ) -> Result<Wallet, StoreError> {
+    ) -> Result<Wallet, EthosError> {
         let address = Address::from_str(&address)?;
         let service = ctx.data::<Arc<WalletService>>().unwrap();
         service.upsert_wallet(address)
@@ -91,7 +89,7 @@ impl MutationRoot {
         ctx: &Context<'ctx>,
         address: String,
         signature: String,
-    ) -> Result<LoginResponse, StoreError> {
+    ) -> Result<LoginResponse, EthosError> {
         let address = Address::from_str(&address)?;
         let service = ctx.data::<Arc<AuthService>>().unwrap();
         service.login(address, signature).await

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_graphql::SimpleObject;
 
-use crate::{errors::StoreError, jwt::JwtAuthentication};
+use crate::{errors::EthosError, jwt::JwtAuthentication};
 use ethers::types::Address;
 
 use super::wallet::{Wallet, WalletService};
@@ -28,7 +28,7 @@ impl AuthService {
         &self,
         addr: Address,
         signature: String,
-    ) -> Result<LoginResponse, StoreError> {
+    ) -> Result<LoginResponse, EthosError> {
         let wallet = self
             .wallet_service
             .verify_signature(addr, signature)
@@ -37,7 +37,7 @@ impl AuthService {
         Ok(LoginResponse { token, wallet })
     }
 
-    pub async fn validate(&self, token: &str) -> Result<Wallet, StoreError> {
+    pub async fn validate(&self, token: &str) -> Result<Wallet, EthosError> {
         Ok(self.jwt_auth.validate(token)?)
     }
 }

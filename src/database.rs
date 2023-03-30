@@ -3,7 +3,7 @@ use std::env;
 use diesel::{pg::PgConnection, r2d2::ConnectionManager};
 use r2d2::{Pool, PooledConnection};
 
-use crate::errors::StoreError;
+use crate::errors::EthosError;
 
 pub fn create_connection_pool() -> Pool<ConnectionManager<PgConnection>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -21,7 +21,7 @@ impl ConnectionPool {
         ConnectionPool { pool }
     }
 
-    pub fn get(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
+    pub fn get(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, EthosError> {
         Ok(self.pool.get()?)
     }
 }

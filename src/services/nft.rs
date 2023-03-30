@@ -7,7 +7,7 @@ use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::database::ConnectionPool;
-use crate::errors::StoreError;
+use crate::errors::EthosError;
 use crate::schema::{
     attributes_on_nfts, collection_contracts, collections, networks, nft_attributes, nfts,
 };
@@ -164,7 +164,7 @@ impl NftService {
         project: &Project,
         name_str: &str,
         desc: Option<String>,
-    ) -> Result<Collection, StoreError> {
+    ) -> Result<Collection, EthosError> {
         use crate::schema::collections::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -178,14 +178,14 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn get_collections(&self, project: &Project) -> Result<Vec<Collection>, StoreError> {
+    pub fn get_collections(&self, project: &Project) -> Result<Vec<Collection>, EthosError> {
         let mut conn = self.pool.get()?;
 
         let result = Collection::belonging_to(&project).load::<Collection>(&mut conn)?;
         Ok(result)
     }
 
-    pub fn get_collection(&self, id: Uuid) -> Result<Collection, StoreError> {
+    pub fn get_collection(&self, id: Uuid) -> Result<Collection, EthosError> {
         use crate::schema::collections::dsl::collections;
         let mut conn = self.pool.get()?;
 
@@ -197,7 +197,7 @@ impl NftService {
         &self,
         project: &Project,
         name_str: &str,
-    ) -> Result<Collection, StoreError> {
+    ) -> Result<Collection, EthosError> {
         use crate::schema::collections::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -208,7 +208,7 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn create_network(&self, chain: i32) -> Result<Network, StoreError> {
+    pub fn create_network(&self, chain: i32) -> Result<Network, EthosError> {
         use crate::schema::networks::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -218,7 +218,7 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn get_network_by_id(&self, chain: i32) -> Result<Network, StoreError> {
+    pub fn get_network_by_id(&self, chain: i32) -> Result<Network, EthosError> {
         use crate::schema::networks::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -234,7 +234,7 @@ impl NftService {
         network: &Network,
         addr: &str,
         recipient: &str,
-    ) -> Result<CollectionContract, StoreError> {
+    ) -> Result<CollectionContract, EthosError> {
         use crate::schema::collection_contracts::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -255,7 +255,7 @@ impl NftService {
         &self,
         network: &Network,
         addr: &str,
-    ) -> Result<CollectionContract, StoreError> {
+    ) -> Result<CollectionContract, EthosError> {
         use crate::schema::collection_contracts::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -266,7 +266,7 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn create_nfts(&self, nft_list: Vec<NewNft>) -> Result<Vec<Nft>, StoreError> {
+    pub fn create_nfts(&self, nft_list: Vec<NewNft>) -> Result<Vec<Nft>, EthosError> {
         use crate::schema::nfts::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -276,7 +276,7 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn get_nfts_by_collection_id(&self, collection: Uuid) -> Result<Vec<Nft>, StoreError> {
+    pub fn get_nfts_by_collection_id(&self, collection: Uuid) -> Result<Vec<Nft>, EthosError> {
         use crate::schema::nfts::dsl::*;
         let mut conn = self.pool.get()?;
 
@@ -292,7 +292,7 @@ impl NftService {
         value: Option<String>,
         max_value: Option<String>,
         display_type: Option<DisplayType>,
-    ) -> Result<NftAttribute, StoreError> {
+    ) -> Result<NftAttribute, EthosError> {
         use crate::schema::nft_attributes::columns;
         let mut conn = self.pool.get()?;
 
@@ -310,7 +310,7 @@ impl NftService {
     pub fn get_attributes_from_type(
         &self,
         trait_type: &str,
-    ) -> Result<Vec<NftAttribute>, StoreError> {
+    ) -> Result<Vec<NftAttribute>, EthosError> {
         use crate::schema::nft_attributes::columns;
         let mut conn = self.pool.get()?;
 
@@ -324,7 +324,7 @@ impl NftService {
         &self,
         nft_id: Uuid,
         attribute_id: Uuid,
-    ) -> Result<AttributesOnNft, StoreError> {
+    ) -> Result<AttributesOnNft, EthosError> {
         use crate::schema::attributes_on_nfts::columns;
         let mut conn = self.pool.get()?;
 
@@ -337,7 +337,7 @@ impl NftService {
         Ok(result)
     }
 
-    pub fn get_nft_attributes(&self, nft_id: Uuid) -> Result<Vec<AttributesOnNft>, StoreError> {
+    pub fn get_nft_attributes(&self, nft_id: Uuid) -> Result<Vec<AttributesOnNft>, EthosError> {
         use crate::schema::attributes_on_nfts::columns;
 
         let mut conn = self.pool.get()?;

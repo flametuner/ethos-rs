@@ -2,7 +2,7 @@ use async_graphql::SimpleObject;
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
-use crate::{database::ConnectionPool, errors::StoreError, schema::projects};
+use crate::{database::ConnectionPool, errors::EthosError, schema::projects};
 use diesel::{Insertable, Queryable};
 use uuid::Uuid;
 
@@ -41,7 +41,7 @@ impl ProjectService {
         &self,
         name: &str,
         description: Option<String>,
-    ) -> Result<Project, StoreError> {
+    ) -> Result<Project, EthosError> {
         let insert = NewProject {
             name: name.to_string(),
             description,
@@ -54,21 +54,21 @@ impl ProjectService {
             .get_result::<Project>(&mut conn)?)
     }
 
-    pub fn get_project(&self, project: Uuid) -> Result<Project, StoreError> {
+    pub fn get_project(&self, project: Uuid) -> Result<Project, EthosError> {
         use crate::schema::projects::dsl::*;
         let mut conn = self.pool.get()?;
         let project = projects.find(project).first(&mut conn)?;
         Ok(project)
     }
 
-    pub fn get_project_by_name(&self, project_name: &str) -> Result<Project, StoreError> {
+    pub fn get_project_by_name(&self, project_name: &str) -> Result<Project, EthosError> {
         use crate::schema::projects::dsl::*;
         let mut conn = self.pool.get()?;
         let project = projects.filter(name.eq(project_name)).first(&mut conn)?;
         Ok(project)
     }
 
-    pub fn get_projects(&self) -> Result<Vec<Project>, StoreError> {
+    pub fn get_projects(&self) -> Result<Vec<Project>, EthosError> {
         use crate::schema::projects::dsl::*;
 
         let mut conn = self.pool.get()?;

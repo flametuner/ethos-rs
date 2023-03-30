@@ -12,7 +12,7 @@ use axum::{
 };
 use database::create_connection_pool;
 use dotenvy::dotenv;
-use resolvers::{MutationRoot, MySchema, QueryRoot};
+use resolvers::{MutationRoot, QueryRoot};
 use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 use uuid::Uuid;
 
@@ -30,6 +30,8 @@ struct AppState {
     auth_service: Arc<AuthService>,
     project_service: Arc<ProjectService>,
 }
+
+pub type MySchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 #[tokio::main]
 async fn main() {
