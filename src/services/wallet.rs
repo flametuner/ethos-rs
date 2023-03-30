@@ -53,18 +53,21 @@ impl WalletService {
     pub fn upsert_wallet(&self, addr: Address) -> Result<Wallet, StoreError> {
         use crate::schema::wallets::dsl::*;
 
-        if let Ok(wallet) = self.get_wallet(&addr) {
-            return Ok(wallet);
-        }
+        let wallet = match self.get_wallet(&addr) {
+            Ok(wallet) => wallet,
+            Err(_) => {
+                let mut conn = self.pool.get()?;
+                let new_wallet = NewWallet {
+                    address: to_full_addr(&addr),
+                    nonce: Uuid::new_v4(),
+                };
 
-        let mut conn = self.pool.get()?;
-        let new_wallet = NewWallet {
-            address: to_full_addr(&addr),
-            nonce: Uuid::new_v4(),
+                diesel::insert_into(wallets)
+                    .values(&new_wallet)
+                    .get_result::<Wallet>(&mut conn)?
+            }
         };
-        Ok(diesel::insert_into(wallets)
-            .values(&new_wallet)
-            .get_result::<Wallet>(&mut conn)?)
+        Ok(wallet)
     }
 
     fn update_nonce(&self, addr: Address) -> Result<Wallet, StoreError> {
