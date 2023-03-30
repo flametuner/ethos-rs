@@ -2,6 +2,7 @@ use async_graphql::{Enum, InputObject, SimpleObject};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::{Identifiable, PgConnection, Queryable};
+use diesel_derive_enum::DbEnum;
 use r2d2::Pool;
 use uuid::Uuid;
 
@@ -101,16 +102,16 @@ struct AttributesOnNft {
 
 #[derive(Queryable, SimpleObject, Identifiable)]
 #[diesel(table_name = nft_attributes)]
-struct NftAttributes {
+pub struct NftAttributes {
     id: Uuid,
     trait_type: Option<String>,
     value: Option<String>,
-    max_value: Option<u32>,
+    max_value: Option<String>,
     display_type: Option<DisplayType>,
 }
-
-#[derive(Enum, Copy, Clone, Eq, PartialEq)]
-enum DisplayType {
+#[derive(Enum, Copy, Clone, Eq, PartialEq, Debug, DbEnum)]
+#[ExistingTypePath = "crate::schema::sql_types::DisplayType"]
+pub enum DisplayType {
     Number,
     BoostPercentage,
     BoostNumber,
@@ -282,6 +283,27 @@ impl NftService {
         let result = nfts
             .filter(collection_id.eq(collection))
             .load::<Nft>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn create_attribute(
+        &self,
+        trait_type: Option<String>,
+        value: Option<String>,
+        max_value: Option<String>,
+        display_type: Option<DisplayType>,
+    ) -> Result<NftAttributes, StoreError> {
+        use crate::schema::nft_attributes::columns;
+        let mut conn = self.pool.get()?;
+
+        let result = diesel::insert_into(nft_attributes::table)
+            .values((
+                columns::trait_type.eq(trait_type),
+                columns::value.eq(value),
+                columns::max_value.eq(max_value),
+                columns::display_type.eq(display_type),
+            ))
+            .get_result::<NftAttributes>(&mut conn)?;
         Ok(result)
     }
 }

@@ -91,9 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     // create nfts
-    let nfts = match nft_service.get_nfts_by_collection_id(collection.id).ok() {
-        Some(nfts) => nfts,
-        None => {
+    let nfts = nft_service.get_nfts_by_collection_id(collection.id);
+    let nfts = match (nfts.as_ref().ok().map(|n| n.len()), nfts) {
+        (Some(len), Ok(nfts)) if len > 0 => nfts,
+        (_, _) => {
             let image_url = "https://assets.taipe.xyz/nft";
             let animation_url = "https://singulari3-turborepo-backoffice.vercel.app/collection";
             let description = "🪩 🦎 Langoo! 🦎 🪩 ∞ ∞ There are 12.000 Langoos! around. They are Brazilian Mystic Creatures ready to steal the spotlight.Langoo! is a metaphor · a lifestyle.Some of them live in the jungle · Some in the big cities · But they really like the coast · They've evolved from there to the rest of the world. They're here way before us. They represent a concept long forgot; ¨ancestry¨.But the flame is still alive ... Each category has its own lore. Visit https://festadotaipe.xyz/onboarding for more info.";
@@ -142,6 +143,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{} nfts", nfts.len());
     println!("First: {:?}", nfts.get(0).unwrap());
     println!("Last: {:?}", nfts.get(nfts.len() - 1).unwrap());
+
+    // create tier attributes
+
+    // create nft attribute relations
 
     Ok(())
 }

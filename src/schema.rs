@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "display_type"))]
+    pub struct DisplayType;
+}
+
 diesel::table! {
     attributes_on_nfts (nft_id, attribute_id) {
         nft_id -> Uuid,
@@ -40,12 +46,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::DisplayType;
+
     nft_attributes (id) {
         id -> Uuid,
         trait_type -> Nullable<Varchar>,
         value -> Nullable<Varchar>,
         max_value -> Nullable<Varchar>,
-        display_type -> Nullable<Varchar>,
+        display_type -> Nullable<DisplayType>,
     }
 }
 
