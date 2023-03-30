@@ -4,7 +4,9 @@ use dotenvy::dotenv;
 use ethos_rs::{
     database::create_connection_pool,
     services::{
-        nft::{CollectionContract, Network, NewNft, Nft, NftService},
+        nft::{
+            AttributesOnNft, CollectionContract, Network, NewNft, Nft, NftAttribute, NftService,
+        },
         project::ProjectService,
     },
 };
@@ -91,10 +93,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     // create nfts
-    let nfts = nft_service.get_nfts_by_collection_id(collection.id);
-    let nfts = match (nfts.as_ref().ok().map(|n| n.len()), nfts) {
-        (Some(len), Ok(nfts)) if len > 0 => nfts,
-        (_, _) => {
+    let nfts = match nft_service.get_nfts_by_collection_id(collection.id) {
+        Ok(nfts) if nfts.len() > 0 => nfts,
+        _ => {
             let image_url = "https://assets.taipe.xyz/nft";
             let animation_url = "https://singulari3-turborepo-backoffice.vercel.app/collection";
             let description = "🪩 🦎 Langoo! 🦎 🪩 ∞ ∞ There are 12.000 Langoos! around. They are Brazilian Mystic Creatures ready to steal the spotlight.Langoo! is a metaphor · a lifestyle.Some of them live in the jungle · Some in the big cities · But they really like the coast · They've evolved from there to the rest of the world. They're here way before us. They represent a concept long forgot; ¨ancestry¨.But the flame is still alive ... Each category has its own lore. Visit https://festadotaipe.xyz/onboarding for more info.";
@@ -141,12 +142,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // check if already exists nfts before creating
 
     println!("{} nfts", nfts.len());
-    println!("First: {:?}", nfts.get(0).unwrap());
+    let first_nft = nfts.get(0).unwrap();
+    println!("First: {:?}", first_nft);
+
     println!("Last: {:?}", nfts.get(nfts.len() - 1).unwrap());
 
     // create tier attributes
 
+    let attributes = match nft_service.get_attributes_from_type("Tier") {
+        Ok(attr) if attr.len() > 0 => attr,
+        Ok(_) | Err(_) => {
+            let attributes: Vec<NftAttribute> = (1..=3)
+                .map(|i| {
+                    let tier_attribute = nft_service.create_attribute(
+                        Some("Tier"),
+                        Some(format!("{}", i)),
+                        None,
+                        None,
+                    );
+
+                    tier_attribute.unwrap()
+                })
+                .collect();
+
+            attributes
+        }
+    };
+
+    println!("{:?}", attributes);
     // create nft attribute relations
+
+    let attributes_on_nft = match nft_service.get_nft_attributes(first_nft.id) {
+        Ok(attr) if attr.len() > 0 => attr,
+        Ok(_) | Err(_) => {
+            let attributes_on_nft: Vec<AttributesOnNft> = nfts
+                .iter()
+                .map(|nft| {
+                    let attribute_id = if nft.nft_id <= 25 {
+                        attributes.get(0).unwrap().id
+                    } else if nft.nft_id <= 500 {
+                        attributes.get(1).unwrap().id
+                    } else {
+                        attributes.get(2).unwrap().id
+                    };
+                    let attr = nft_service.create_attribute_nft_relation(nft.id, attribute_id);
+
+                    attr.unwrap()
+                })
+                .collect();
+            attributes_on_nft
+        }
+    };
+
+    println!("{:?}", attributes_on_nft.get(0).unwrap());
 
     Ok(())
 }

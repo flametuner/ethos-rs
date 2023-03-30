@@ -76,8 +76,8 @@ pub struct NewNft {
 #[diesel(belongs_to(Collection))]
 #[diesel(table_name = nfts)]
 pub struct Nft {
-    id: Uuid,
-    nft_id: i32,
+    pub id: Uuid,
+    pub nft_id: i32,
     name: String,
     description: String,
     minted_at: Option<chrono::NaiveDateTime>,
@@ -90,20 +90,20 @@ pub struct Nft {
     network_contract_id: Uuid,
 }
 
-#[derive(Queryable, SimpleObject, Associations, Identifiable)]
-#[diesel(belongs_to(NftAttributes, foreign_key = attribute_id))]
+#[derive(Debug, Queryable, SimpleObject, Associations, Identifiable)]
+#[diesel(belongs_to(NftAttribute, foreign_key = attribute_id))]
 #[diesel(belongs_to(Nft))]
 #[diesel(primary_key(nft_id, attribute_id))]
 #[diesel(table_name = attributes_on_nfts)]
-struct AttributesOnNft {
+pub struct AttributesOnNft {
     nft_id: Uuid,
     attribute_id: Uuid,
 }
 
-#[derive(Queryable, SimpleObject, Identifiable)]
+#[derive(Debug, Queryable, SimpleObject, Identifiable)]
 #[diesel(table_name = nft_attributes)]
-pub struct NftAttributes {
-    id: Uuid,
+pub struct NftAttribute {
+    pub id: Uuid,
     trait_type: Option<String>,
     value: Option<String>,
     max_value: Option<String>,
@@ -288,11 +288,11 @@ impl NftService {
 
     pub fn create_attribute(
         &self,
-        trait_type: Option<String>,
+        trait_type: Option<&str>,
         value: Option<String>,
         max_value: Option<String>,
         display_type: Option<DisplayType>,
-    ) -> Result<NftAttributes, StoreError> {
+    ) -> Result<NftAttribute, StoreError> {
         use crate::schema::nft_attributes::columns;
         let mut conn = self.pool.get()?;
 
@@ -303,7 +303,48 @@ impl NftService {
                 columns::max_value.eq(max_value),
                 columns::display_type.eq(display_type),
             ))
-            .get_result::<NftAttributes>(&mut conn)?;
+            .get_result::<NftAttribute>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn get_attributes_from_type(
+        &self,
+        trait_type: &str,
+    ) -> Result<Vec<NftAttribute>, StoreError> {
+        use crate::schema::nft_attributes::columns;
+        let mut conn = self.pool.get()?;
+
+        let result = nft_attributes::table
+            .filter(columns::trait_type.eq(Some(trait_type)))
+            .load::<NftAttribute>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn create_attribute_nft_relation(
+        &self,
+        nft_id: Uuid,
+        attribute_id: Uuid,
+    ) -> Result<AttributesOnNft, StoreError> {
+        use crate::schema::attributes_on_nfts::columns;
+        let mut conn = self.pool.get()?;
+
+        let result = diesel::insert_into(attributes_on_nfts::table)
+            .values((
+                columns::nft_id.eq(nft_id),
+                columns::attribute_id.eq(attribute_id),
+            ))
+            .get_result::<AttributesOnNft>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn get_nft_attributes(&self, nft_id: Uuid) -> Result<Vec<AttributesOnNft>, StoreError> {
+        use crate::schema::attributes_on_nfts::columns;
+
+        let mut conn = self.pool.get()?;
+
+        let result = attributes_on_nfts::table
+            .filter(columns::nft_id.eq(nft_id))
+            .load::<AttributesOnNft>(&mut conn)?;
         Ok(result)
     }
 }
