@@ -237,8 +237,6 @@ impl NftService {
         use crate::schema::collection_contracts::dsl::*;
         let mut conn = self.pool.get()?;
 
-        println!("{:?}", collection);
-        println!("{:?}", network);
         let result = diesel::insert_into(collection_contracts)
             .values((
                 network_id.eq(network.id),
@@ -274,6 +272,16 @@ impl NftService {
         let result = diesel::insert_into(nfts)
             .values(nft_list)
             .get_results::<Nft>(&mut conn)?;
+        Ok(result)
+    }
+
+    pub fn get_nfts_by_collection_id(&self, collection: Uuid) -> Result<Vec<Nft>, StoreError> {
+        use crate::schema::nfts::dsl::*;
+        let mut conn = self.pool.get()?;
+
+        let result = nfts
+            .filter(collection_id.eq(collection))
+            .load::<Nft>(&mut conn)?;
         Ok(result)
     }
 }

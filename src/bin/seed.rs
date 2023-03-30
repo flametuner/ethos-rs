@@ -90,48 +90,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect();
 
-    let image_url = "https://assets.taipe.xyz/nft";
-    let animation_url = "https://singulari3-turborepo-backoffice.vercel.app/collection";
-    let description = "🪩 🦎 Langoo! 🦎 🪩 ∞ ∞ There are 12.000 Langoos! around. They are Brazilian Mystic Creatures ready to steal the spotlight.Langoo! is a metaphor · a lifestyle.Some of them live in the jungle · Some in the big cities · But they really like the coast · They've evolved from there to the rest of the world. They're here way before us. They represent a concept long forgot; ¨ancestry¨.But the flame is still alive ... Each category has its own lore. Visit https://festadotaipe.xyz/onboarding for more info.";
+    // create nfts
+    let nfts = match nft_service.get_nfts_by_collection_id(collection.id).ok() {
+        Some(nfts) => nfts,
+        None => {
+            let image_url = "https://assets.taipe.xyz/nft";
+            let animation_url = "https://singulari3-turborepo-backoffice.vercel.app/collection";
+            let description = "🪩 🦎 Langoo! 🦎 🪩 ∞ ∞ There are 12.000 Langoos! around. They are Brazilian Mystic Creatures ready to steal the spotlight.Langoo! is a metaphor · a lifestyle.Some of them live in the jungle · Some in the big cities · But they really like the coast · They've evolved from there to the rest of the world. They're here way before us. They represent a concept long forgot; ¨ancestry¨.But the flame is still alive ... Each category has its own lore. Visit https://festadotaipe.xyz/onboarding for more info.";
 
-    let nfts_data: Vec<NewNft> = (1..=12000)
-        .map(|i| {
-            let extension = if i <= 25 { "gif " } else { "png" };
-            let contract_network = if i <= 25 {
-                collection_contracts.get(0).unwrap()
-            } else {
-                collection_contracts.get(1).unwrap()
-            };
-            if i % 1000 == 0 {
-                println!("{} - {}", i, contract_network.id);
-            }
-            let nft_data = NewNft {
-                nft_id: i,
-                name: format!("Langoo! {}", i),
-                image: format!("{}/{}.{}", image_url, i, extension),
-                description: description.to_string(),
-                external_url: format!("https://taipe.xyz/nft/{}", i),
-                animation_url: format!("{}/{}/nft/{}", animation_url, collection.id.to_string(), i),
-                collection_id: collection.id,
-                network_contract_id: contract_network.id,
-            };
-            nft_data
-        })
-        .collect();
+            let nfts_data: Vec<NewNft> = (1..=12000)
+                .map(|i| {
+                    let extension = if i <= 25 { "gif " } else { "png" };
+                    let contract_network = if i <= 25 {
+                        collection_contracts.get(0).unwrap()
+                    } else {
+                        collection_contracts.get(1).unwrap()
+                    };
+                    let nft_data = NewNft {
+                        nft_id: i,
+                        name: format!("Langoo! {}", i),
+                        image: format!("{}/{}.{}", image_url, i, extension),
+                        description: description.to_string(),
+                        external_url: format!("https://taipe.xyz/nft/{}", i),
+                        animation_url: format!(
+                            "{}/{}/nft/{}",
+                            animation_url,
+                            collection.id.to_string(),
+                            i
+                        ),
+                        collection_id: collection.id,
+                        network_contract_id: contract_network.id,
+                    };
+                    nft_data
+                })
+                .collect();
 
-    let nfts = nfts_data
-        .chunks(1000)
-        .into_iter()
-        .map(|chunk| {
-            let nfts = nft_service.create_nfts(chunk.to_vec()).unwrap();
+            let nfts = nfts_data
+                .chunks(1000)
+                .into_iter()
+                .map(|chunk| {
+                    let nfts = nft_service.create_nfts(chunk.to_vec()).unwrap();
+                    nfts
+                })
+                .flatten()
+                .collect::<Vec<Nft>>();
             nfts
-        })
-        .flatten()
-        .collect::<Vec<Nft>>();
+        }
+    };
+    // check if already exists nfts before creating
 
-    println!("{} nfts created", nfts.len());
-    // println!("First nft: {:?}", nfts.get(0).unwrap());
-    // println!("Last nft: {:?}", nfts.get(nfts.len() - 1).unwrap());
+    println!("{} nfts", nfts.len());
+    println!("First: {:?}", nfts.get(0).unwrap());
+    println!("Last: {:?}", nfts.get(nfts.len() - 1).unwrap());
 
     Ok(())
 }
