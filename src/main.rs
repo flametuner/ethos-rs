@@ -10,13 +10,15 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
-use database::create_connection_pool;
 use dotenvy::dotenv;
-use resolvers::{MutationRoot, QueryRoot};
-use services::{auth::AuthService, project::ProjectService, wallet::WalletService};
 use uuid::Uuid;
 
-use crate::services::{nft::NftService, profile::ProfileService};
+use database::{create_connection_pool, ConnectionPool};
+use resolvers::{MutationRoot, QueryRoot};
+use services::{
+    auth::AuthService, nft::NftService, profile::ProfileService, project::ProjectService,
+    wallet::WalletService,
+};
 
 pub mod database;
 mod errors;
@@ -53,7 +55,8 @@ async fn main() {
     println!("Setting up services...");
     let project_service = Arc::new(ProjectService::new(database_connection.clone()));
     let profile_service = ProfileService::new(database_connection.clone());
-    let wallet_service = Arc::new(WalletService::new(database_connection.clone()));
+    let pool = ConnectionPool::new(database_connection.clone());
+    let wallet_service = Arc::new(WalletService::new(pool));
     let auth_service = Arc::new(AuthService::new(wallet_service.clone()));
     let collection_service = NftService::new(database_connection.clone());
     let nft_service = NftService::new(database_connection.clone());

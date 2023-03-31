@@ -8,6 +8,10 @@ edition = "2021"
 name = "seed"
 path = "src/bin/seed.rs"
 
+[[bin]]
+name = "ethos"
+path = "src/main.rs"
+
 [dependencies]
 async-graphql = { version = "5.0.6", features= ["chrono", "uuid"] }
 async-graphql-axum = "5.0.6"

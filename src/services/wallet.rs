@@ -3,16 +3,15 @@ use diesel::prelude::*;
 use ethers::types::Address;
 use ethers::utils::to_checksum;
 
-use diesel::{r2d2::ConnectionManager, Insertable, PgConnection, Queryable, RunQueryDsl};
+use diesel::{Insertable, Queryable, RunQueryDsl};
 use ethers::types::Signature;
-use r2d2::Pool;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::{database::ConnectionPool, errors::EthosError, schema::wallets};
 
-#[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize, Identifiable)]
+#[derive(Debug, Queryable, SimpleObject, Serialize, Deserialize, Identifiable, PartialEq)]
 #[diesel(table_name = wallets)]
 pub struct Wallet {
     pub id: Uuid,
@@ -34,10 +33,8 @@ pub struct WalletService {
 }
 
 impl WalletService {
-    pub fn new(pool: Pool<ConnectionManager<PgConnection>>) -> Self {
-        Self {
-            pool: ConnectionPool::new(pool),
-        }
+    pub fn new(pool: ConnectionPool) -> Self {
+        Self { pool }
     }
 
     pub fn get_wallet(&self, addr: &Address) -> Result<Wallet, EthosError> {
@@ -46,7 +43,7 @@ impl WalletService {
 
         let wallet = wallets
             .filter(address.eq(to_full_addr(&addr)))
-            .first::<Wallet>(&mut *conn)?;
+            .first::<Wallet>(&mut conn)?;
         Ok(wallet)
     }
 
@@ -123,4 +120,45 @@ fn create_message(address: &Address, nonce: &str) -> String {
 
 fn to_full_addr(addr: &Address) -> String {
     to_checksum(addr, None)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt::Debug;
+
+    use dotenvy::dotenv;
+    use ethers::{types::Address, utils::to_checksum};
+
+    use crate::{
+        database::{create_connection_pool, ConnectionPool},
+        errors::EthosError,
+    };
+
+    use super::WalletService;
+
+    fn execute_transaction<F, T, E>(function: F)
+    where
+        F: FnOnce(ConnectionPool) -> Result<T, E>,
+        E: Debug,
+    {
+        dotenv().ok();
+        let database_connection = create_connection_pool();
+        let pool = ConnectionPool::new(database_connection);
+        function(pool).unwrap();
+    }
+
+    #[test]
+    fn test_wallet_creation() {
+        execute_transaction::<_, _, EthosError>(|pool| {
+            let wallet_service = WalletService::new(pool);
+            let addr = Address::random();
+            let wallet = wallet_service.upsert_wallet(addr)?;
+            assert_eq!(to_checksum(&addr, None), wallet.address);
+
+            let returned_wallet = wallet_service.get_wallet(&addr)?;
+            assert_eq!(wallet, returned_wallet);
+
+            Ok(())
+        })
+    }
 }
