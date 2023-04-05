@@ -1,4 +1,5 @@
 use crate::guards::with_project::WithProject;
+use crate::services::nft::{FilterNFTsInput, PaginatedNFTs};
 use crate::{
     guards::is_authenticated::IsAuthenticated,
     services::{
@@ -9,6 +10,7 @@ use crate::{
 use async_graphql::{Context, Object};
 use ethers::types::Address;
 use std::{str::FromStr, sync::Arc};
+use uuid::Uuid;
 
 use crate::{
     errors::EthosError,
@@ -45,6 +47,24 @@ impl QueryRoot {
     async fn projects<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<Project>, EthosError> {
         let service = ctx.data::<Arc<ProjectService>>().unwrap();
         service.get_projects()
+    }
+
+    async fn collection<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        id: Uuid,
+    ) -> Result<Collection, EthosError> {
+        let service = ctx.data::<NftService>().unwrap();
+        service.get_collection(id)
+    }
+
+    async fn nfts<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        input: FilterNFTsInput,
+    ) -> Result<PaginatedNFTs, EthosError> {
+        let service = ctx.data::<NftService>().unwrap();
+        service.get_nfts(input)
     }
 }
 

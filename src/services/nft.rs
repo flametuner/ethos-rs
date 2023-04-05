@@ -120,11 +120,10 @@ pub enum DisplayType {
 #[derive(SimpleObject)]
 pub struct PaginatedNFTs {
     edges: Vec<Nft>,
-    total_count: i32,
     next_cursor: Option<Uuid>,
 }
 
-#[derive(InputObject)]
+#[derive(Debug, InputObject)]
 pub struct FilterNFTsInput {
     nft_id: Option<i32>,
     take: Option<i32>,
@@ -136,16 +135,16 @@ pub struct FilterNFTsInput {
     order_by: Option<NFTOrderBy>,
 }
 
-#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq)]
 pub enum Sort {
     Asc,
     Desc,
 }
 
-#[derive(InputObject)]
+#[derive(Debug, InputObject)]
 pub struct NFTOrderBy {
-    nft_id: Sort,
-    minted: Sort,
+    nft_id: Option<Sort>,
+    minted: Option<Sort>,
 }
 
 pub struct NftService {
@@ -346,5 +345,66 @@ impl NftService {
             .filter(columns::nft_id.eq(nft_id))
             .load::<AttributesOnNft>(&mut conn)?;
         Ok(result)
+    }
+
+    pub fn get_nfts(&self, input: FilterNFTsInput) -> Result<PaginatedNFTs, EthosError> {
+        use crate::schema::nfts::dsl::*;
+        let mut conn = self.pool.get()?;
+
+        let mut query = nfts
+            .left_join(attributes_on_nfts::table.left_join(nft_attributes::table))
+            .select(nfts::all_columns())
+            .into_boxed();
+
+        if let Some(cursor) = input.cursor {
+            query = query.filter(id.gt(cursor));
+        }
+
+        query = query.limit(input.take.unwrap_or(20).into());
+
+        if let Some(nft) = input.nft_id {
+            query = query.filter(nft_id.eq(nft));
+        }
+
+        if let Some(order) = input.order_by {
+            if let Some(nft_id_order) = order.nft_id {
+                match nft_id_order {
+                    Sort::Asc => query = query.order(nft_id.asc()),
+                    Sort::Desc => query = query.order(nft_id.desc()),
+                }
+            }
+            if let Some(minter_order) = order.minted {
+                match minter_order {
+                    Sort::Asc => query = query.order(minted_at.asc()),
+                    Sort::Desc => query = query.order(minted_at.desc()),
+                }
+            }
+        }
+        if let Some(collection) = input.collection_id {
+            query = query.filter(collection_id.eq(collection));
+        }
+
+        if let Some(minted) = input.minted {
+            if minted {
+                query = query.filter(minted_at.is_not_null());
+            } else {
+                query = query.filter(minted_at.is_null());
+            }
+        }
+
+        if let Some(tier) = input.tier {
+            query = query
+                .filter(nft_attributes::dsl::trait_type.eq("Tier"))
+                .filter(nft_attributes::dsl::value.eq(tier.to_string()));
+        }
+
+        let edges = query.load::<Nft>(&mut conn)?;
+        let last = edges.last().map(|nft| nft.id);
+
+        // let result = query.load::<Nft>(&mut conn)?;
+        Ok(PaginatedNFTs {
+            edges,
+            next_cursor: last,
+        })
     }
 }

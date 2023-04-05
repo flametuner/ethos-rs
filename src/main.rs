@@ -13,20 +13,12 @@ use axum::{
 use dotenvy::dotenv;
 use uuid::Uuid;
 
-use database::{create_connection_pool, ConnectionPool};
-use resolvers::{MutationRoot, QueryRoot};
-use services::{
+use ethos_rs::database::{create_connection_pool, ConnectionPool};
+use ethos_rs::resolvers::{MutationRoot, QueryRoot};
+use ethos_rs::services::{
     auth::AuthService, nft::NftService, profile::ProfileService, project::ProjectService,
     wallet::WalletService,
 };
-
-pub mod database;
-mod errors;
-mod guards;
-mod jwt;
-mod resolvers;
-pub mod schema;
-mod services;
 
 struct AppState {
     auth_service: Arc<AuthService>,
