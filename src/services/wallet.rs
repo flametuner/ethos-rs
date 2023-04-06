@@ -81,26 +81,30 @@ impl WalletService {
         Ok(wallet)
     }
 
-    pub async fn verify_signature(
-        &self,
-        addr: Address,
-        signature: String,
-    ) -> Result<Wallet, EthosError> {
+    pub async fn login(&self, addr: Address, signature: String) -> Result<Wallet, EthosError> {
         // verify signature
-        let signature = Signature::from_str(&signature)?;
-        // retrive the nonce from the dattabase
-
         let wallet = self.get_wallet(&addr)?;
-        let nonce = wallet.nonce.to_string();
+        verify_signature(addr, &wallet.nonce.to_string(), signature).await?;
 
-        let message = create_message(&addr, &nonce);
-        println!("{}", message);
-        // check if the nonce of the signature is the same of the database
-        signature.verify(message, addr)?;
         // update the nonce
         // return wallet
         Ok(self.update_nonce(addr)?)
     }
+}
+
+async fn verify_signature(
+    addr: Address,
+    nonce: &String,
+    signature: String,
+) -> Result<(), EthosError> {
+    // verify signature
+    let signature = Signature::from_str(&signature)?;
+    // retrive the nonce from the dattabase
+
+    let message = create_message(&addr, &nonce);
+    // check if the nonce of the signature is the same of the database
+    signature.verify(message, addr)?;
+    Ok(())
 }
 
 fn create_message(address: &Address, nonce: &str) -> String {
@@ -124,14 +128,22 @@ fn to_full_addr(addr: &Address) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::services::wallet::verify_signature;
     use std::fmt::Debug;
 
     use dotenvy::dotenv;
-    use ethers::{types::Address, utils::to_checksum};
+    use ethers::{
+        signers::{LocalWallet, Signer},
+        types::Address,
+        utils::to_checksum,
+    };
+    use fixed_hash::rand::thread_rng;
+    use uuid::Uuid;
 
     use crate::{
         database::{create_connection_pool, ConnectionPool},
         errors::EthosError,
+        services::wallet::create_message,
     };
 
     use super::WalletService;
@@ -160,5 +172,16 @@ mod tests {
 
             Ok(())
         })
+    }
+
+    #[tokio::test]
+    async fn test_verify_signature() {
+        let signer = LocalWallet::new(&mut thread_rng());
+        let nonce = Uuid::new_v4().to_string();
+        let message = create_message(&signer.address(), &nonce);
+        let signature = signer.sign_message(message).await.unwrap().to_string();
+        verify_signature(signer.address(), &nonce, signature)
+            .await
+            .expect("It didn't verified the signature correctly");
     }
 }

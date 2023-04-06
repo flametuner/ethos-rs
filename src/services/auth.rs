@@ -29,10 +29,7 @@ impl AuthService {
         addr: Address,
         signature: String,
     ) -> Result<LoginResponse, EthosError> {
-        let wallet = self
-            .wallet_service
-            .verify_signature(addr, signature)
-            .await?;
+        let wallet = self.wallet_service.login(addr, signature).await?;
         let token = self.jwt_auth.create_token(&wallet)?;
         Ok(LoginResponse { token, wallet })
     }
