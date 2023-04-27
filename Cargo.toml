@@ -10,7 +10,7 @@ path = "src/bin/seed.rs"
 
 [[bin]]
 name = "ethos"
-path = "src/main.rs"
+path = "src/bin/server.rs"
 
 [dependencies]
 async-graphql = { version = "5.0.6", features= ["chrono", "uuid"] }
@@ -29,3 +29,4 @@ jsonwebtoken = "8.3.0"
 serde = { version="1.0.158", features=["derive"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 diesel-derive-enum = { version = "2.0.1", features = ["postgres"] }
+anyhow = "1.0.70"

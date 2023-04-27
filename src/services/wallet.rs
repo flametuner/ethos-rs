@@ -80,25 +80,13 @@ impl WalletService {
 
         Ok(wallet)
     }
-
-    pub async fn verify_signature(
+    pub async fn verify_and_update_nonce(
         &self,
-        addr: Address,
+        wallet: &Wallet,
         signature: String,
     ) -> Result<Wallet, EthosError> {
-        // verify signature
-        let signature = Signature::from_str(&signature)?;
-        // retrive the nonce from the dattabase
-
-        let wallet = self.get_wallet(&addr)?;
-        let nonce = wallet.nonce.to_string();
-
-        let message = create_message(&addr, &nonce);
-        println!("{}", message);
-        // check if the nonce of the signature is the same of the database
-        signature.verify(message, addr)?;
-        // update the nonce
-        // return wallet
+        let addr = Address::from_str(&wallet.address)?;
+        verify_signature(wallet, signature).await?;
         Ok(self.update_nonce(addr)?)
     }
 }
@@ -118,6 +106,20 @@ fn create_message(address: &Address, nonce: &str) -> String {
     )
 }
 
+pub async fn verify_signature(wallet: &Wallet, signature: String) -> Result<(), EthosError> {
+    // verify signature
+    let signature = Signature::from_str(&signature)?;
+    // retrive the nonce from the dattabase
+    let addr = Address::from_str(&wallet.address)?;
+    let nonce = wallet.nonce.to_string();
+
+    let message = create_message(&addr, &nonce);
+    println!("{}", message);
+    // check if the nonce of the signature is the same of the database
+    signature.verify(message, addr)?;
+    // update the nonce
+    Ok(())
+}
 fn to_full_addr(addr: &Address) -> String {
     to_checksum(addr, None)
 }
@@ -126,24 +128,35 @@ fn to_full_addr(addr: &Address) -> String {
 mod tests {
     use std::fmt::Debug;
 
+    use anyhow::Result;
     use dotenvy::dotenv;
-    use ethers::{types::Address, utils::to_checksum};
+    use ethers::{
+        signers::{LocalWallet, Signer},
+        types::Address,
+        utils::to_checksum,
+    };
+    use fixed_hash::rand::thread_rng;
 
     use crate::{
         database::{create_connection_pool, ConnectionPool},
         errors::EthosError,
+        services::wallet::create_message,
     };
 
     use super::WalletService;
+
+    fn get_pool() -> ConnectionPool {
+        dotenv().ok();
+        let database_connection = create_connection_pool();
+        ConnectionPool::new(database_connection)
+    }
 
     fn execute_transaction<F, T, E>(function: F)
     where
         F: FnOnce(ConnectionPool) -> Result<T, E>,
         E: Debug,
     {
-        dotenv().ok();
-        let database_connection = create_connection_pool();
-        let pool = ConnectionPool::new(database_connection);
+        let pool = get_pool();
         function(pool).unwrap();
     }
 
@@ -159,6 +172,24 @@ mod tests {
             assert_eq!(wallet, returned_wallet);
 
             Ok(())
-        })
+        });
+    }
+
+    #[tokio::test]
+    async fn test_wallet_signature() -> Result<()> {
+        let wallet_service = WalletService::new(get_pool());
+        let signer = LocalWallet::new(&mut thread_rng());
+        let wallet = wallet_service.upsert_wallet(signer.address())?;
+        let message = create_message(&signer.address(), &wallet.nonce.to_string());
+
+        let signature = signer.sign_message(message).await.unwrap();
+        // verify_signature(wallet, signature.to_string()).await?;
+        let wallet_2 = wallet_service
+            .verify_and_update_nonce(&wallet, signature.to_string())
+            .await?;
+
+        assert_ne!(&wallet.nonce, &wallet_2.nonce);
+
+        Ok(())
     }
 }
